@@ -1,67 +1,131 @@
-# 🚀 Plateforme du Club d'Entrepreneuriat
+# Club d'Entrepreneuriat — CIAT · ISEP Amadou Trawaré
 
-> Solution clé en main développée pour le recrutement, la sélection et l'accompagnement des étudiants entrepreneurs.
-> Comprend une **Landing Page vitrine**, un **Formulaire d'inscription interactif** et un **Back-Office d'administration sécurisé avec export CSV**.
+Plateforme d'inscription des groupes au Club d'Entrepreneuriat.
 
----
+- **Frontend** : React 18 + Vite + Tailwind CSS (`frontend/`)
+- **Backend** : Django 5 + Django REST Framework + SQLite (`backend/`)
 
-## 👥 Répartition des Tâches (Équipe de 3)
+## Fonctionnalités
 
-Pour maximiser l'efficacité et valoriser le travail devant le professeur :
+**Formulaire public** (`/`)
+- Nom du groupe, nom du projet, **e-mail du responsable** (reçoit la référence par e-mail)
+- Membres (1 à 6) : nom, prénom, département (TIC ou Automobile), filière — ajout / retrait dynamique
+- Description du projet (30 caractères minimum)
+- **Bouton d'engagement** : l'envoi n'est possible qu'une fois le groupe engagé
+- Validation côté client **et** côté serveur, nom de groupe unique, référence aléatoire `CIAT-2026-7KQ4MZ` renvoyée
 
-| Rôle | Responsable | Périmètre & Fichiers |
-| :--- | :--- | :--- |
-| **Membre 1 : Landing Page & Branding** | Étudiant 1 | Design vitrine, arguments d'impact, FAQ, identité visuelle.<br>`src/components/Hero.tsx`, `AboutClub.tsx`, `Navbar.tsx`, `FAQ.tsx`, `Footer.tsx` |
-| **Membre 2 : Formulaire & Parcours Candidat** | Étudiant 2 | Expérience utilisateur, champs du formulaire (filières, compétences, pitch d'idées), validations et messages de succès.<br>`src/components/ApplicationForm.tsx`, `src/app/api/apply/route.ts` |
-| **Membre 3 : Back-Office & Déploiement** | Étudiant 3 | Tableau de bord admin, traitement des statuts (Entretien/Accepté/Rejeté), export CSV, sécurité et déploiement Vercel.<br>`src/app/admin/page.tsx`, `src/app/api/admin/`, `src/lib/storage.ts` |
+**Compte à rebours** : clôture le **lundi 9 novembre 2026 à 23 h 59** (heure de Dakar).
+Après cette date, le formulaire est remplacé par un message et Django refuse les nouvelles inscriptions.
+Date modifiable via la variable `DATE_LIMITE_INSCRIPTION`.
 
----
+**Suivi de dossier** (`/suivi`) : référence + nom du groupe → statut, frise d'avancement, membres.
+Les notes internes de l'administration ne sont jamais affichées.
 
-## ⚡ Démarrage Rapide en Local
+**Référence oubliée** (`/recuperation`) :
+1. le groupe saisit l'e-mail donné à l'inscription → un code à 6 chiffres y est envoyé (valable 15 min) ;
+2. il saisit le code (5 essais maximum, usage unique, stocké haché) ;
+3. une **nouvelle référence** est générée et affichée, l'ancienne cesse de fonctionner, et un e-mail
+   d'alerte contenant la nouvelle référence est envoyé.
 
-### 1. Prérequis
-- Node.js (version 18+ ou 20+)
+La réponse à l'étape 1 est la même que l'adresse soit inscrite ou non (on ne révèle pas qui est inscrit).
 
-### 2. Lancement du serveur de développement
+### Envoi des e-mails (Gmail)
+
+Les e-mails partent de l'adresse configurée dans `backend/.env` (non versionné) :
+
+1. Activer la validation en 2 étapes sur le compte Google.
+2. Créer un **mot de passe d'application** sur https://myaccount.google.com/apppasswords.
+3. Le coller dans `backend/.env` : `EMAIL_HOST_PASSWORD=xxxx xxxx xxxx xxxx`, puis relancer `runserver`.
+
+Tant que ce mot de passe est vide, les e-mails (et donc les codes) s'affichent dans le terminal de `runserver`.
+
+**Hero** : diaporama (`frontend/public/hero.jpeg` et `hero-atelier.jpeg`), suivi d'une section d'annonce
+« L'ISEP lance son Club d'Entrepreneuriat ». Une image absente est simplement ignorée.
+
+**Page administrateur** (`/admin`)
+- Connexion par compte staff Django (token)
+- Indicateurs : groupes, membres, en attente, entretien, acceptés, rejetés
+- Recherche (groupe, référence, e-mail, projet, membre, département, filière) et filtre par statut
+- Fiche détaillée : membres, description, engagement, changement de statut, notes internes, suppression
+- Export CSV compatible Excel (une ligne par membre)
+
+L'admin Django classique reste disponible sur `http://127.0.0.1:8010/django-admin/`.
+
+## Mise en ligne
+
+Voir **[DEPLOIEMENT.md](DEPLOIEMENT.md)** : Vercel (frontend) + PythonAnywhere (backend), 100 % gratuit.
+
+## Lancer le projet en local
+
+### 1. Backend (terminal 1)
+
 ```bash
-npm install
-npm run dev
+cd backend
+python -m venv .venv
+# Windows : .venv\Scripts\activate   ·   Linux/Mac : source .venv/bin/activate
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py createsuperuser      # compte pour la page /admin
+python manage.py runserver 8010       # http://127.0.0.1:8010
 ```
 
-L'application est accessible sur :
-- **Landing page & Formulaire public** : [http://localhost:3000](http://localhost:3000)
-- **Back-Office d'administration** : [http://localhost:3000/admin](http://localhost:3000/admin)
-  - Mot de passe par défaut : `admin2026`
+### 2. Frontend (terminal 2)
 
----
+```bash
+cd frontend
+npm install
+npm run dev                           # http://localhost:5173
+```
 
-## 🌐 Déploiement Gratuit en 2 Minutes (Vercel)
+Le serveur Vite redirige automatiquement `/api` vers Django.
 
-Pour respecter la consigne de déploiement aujourd'hui :
+### Tests backend
 
-1. **Pousser le code sur GitHub :**
-   ```bash
-   git add .
-   git commit -m "feat: solution complete landing page, formulaire et back office"
-   git push origin main
-   ```
+```bash
+cd backend
+python manage.py test inscriptions
+```
 
-2. **Connecter à Vercel (100% gratuit) :**
-   - Rendez-vous sur [vercel.com](https://vercel.com) et connectez-vous avec GitHub.
-   - Cliquez sur **"Add New..."** > **"Project"**.
-   - Sélectionnez votre dépôt `Formulaire-d-entreprenariat`.
-   - Dans la section **Environment Variables**, ajoutez :
-     - `ADMIN_PASSWORD` = `votre_mot_de_passe_secret` (ex: `club2026`)
-   - Cliquez sur **"Deploy"**.
-   - 🎉 En moins de 60 secondes, votre site est en ligne avec une URL HTTPS sécurisée (ex: `https://formulaire-d-entreprenariat.vercel.app`) !
+## API
 
----
+| Méthode | URL | Accès | Rôle |
+| --- | --- | --- | --- |
+| POST | `/api/inscriptions/` | public | Créer une inscription (groupe + membres) |
+| GET | `/api/infos/` | public | Date limite + inscriptions ouvertes ou non (compte à rebours) |
+| POST | `/api/suivi/` | public | Suivi d'un dossier : `{reference, nom_groupe}` (les deux doivent correspondre) |
+| POST | `/api/recuperation/demande/` | public | `{email}` : envoie un code de vérification |
+| POST | `/api/recuperation/verification/` | public | `{email, code}` : génère une nouvelle référence |
+| POST | `/api/admin/connexion/` | public | Obtenir un token (compte staff) |
+| POST | `/api/admin/deconnexion/` | staff | Révoquer le token |
+| GET | `/api/admin/inscriptions/?q=&statut=` | staff | Liste filtrée |
+| GET / PATCH / DELETE | `/api/admin/inscriptions/<id>/` | staff | Détail, statut + notes, suppression |
+| GET | `/api/admin/inscriptions/stats/` | staff | Indicateurs |
+| GET | `/api/admin/inscriptions/export/` | staff | Export CSV |
 
-## 📊 Fonctionnalités du Back-Office
+Exemple de corps pour `POST /api/inscriptions/` :
 
-- 📈 **KPIs en temps réel** : Total candidatures, en attente, convoqués en entretien, acceptés, rejetés, porteurs d'idées.
-- 🔍 **Recherche instantanée** : Par nom, email, filière, compétence ou nom de projet.
-- 🗂️ **Filtres multicritères** : Filtrer par statut ou isoler les porteurs de projet.
-- 📝 **Dossier candidat complet** : Modal avec pitch du projet, compétences, motivation et disponibilité.
-- 🔄 **Changement de statut & Notes internes** : Sauvegarder les délibérations du jury.
-- 📥 **Export CSV / Excel** : Téléchargement en un clic de l'ensemble de la base avec encodage UTF-8.
+```json
+{
+  "nom_groupe": "Les Bâtisseurs",
+  "nom_projet": "AgriCollect",
+  "email": "awa.diop@gmail.com",
+  "description_projet": "Plateforme qui relie les producteurs locaux aux acheteurs…",
+  "engagement": true,
+  "membres": [
+    { "nom": "Diop", "prenom": "Awa", "departement": "Informatique & Numérique", "metier": "Développeuse web" }
+  ]
+}
+```
+
+## Structure
+
+```
+backend/
+  config/            réglages Django, URLs racine
+  inscriptions/      modèles Inscription + Membre, API, admin Django, tests
+frontend/
+  public/            logo CIAT, image hero
+  src/components/    Navbar, Hero, AboutClub, FormulaireInscription, Footer
+  src/pages/         Accueil, Admin
+  src/lib/api.js     client de l'API
+```

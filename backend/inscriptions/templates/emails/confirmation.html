@@ -1,0 +1,28 @@
+{% extends "emails/base.html" %}
+{% block contenu %}
+<p style="margin:0 0 22px;font-size:15px;line-height:1.6;color:#5f3b28;">
+  Bonjour,<br>
+  Le groupe <strong style="color:#331e14;">{{ dossier.nom_groupe }}</strong> est bien inscrit au Club d'Entrepreneuriat.
+  Bienvenue ! Voici votre référence de dossier :
+</p>
+
+{% include "emails/_reference.html" %}
+
+<p style="margin:16px 0 0;font-size:14px;line-height:1.6;color:#5f3b28;">
+  <strong style="color:#331e14;">Conservez cet e-mail.</strong> Avec le nom du groupe, cette référence vous permet de suivre
+  l'avancement de votre dossier. En cas d'oubli, vous pourrez la récupérer avec cette adresse e-mail.
+</p>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 0;">
+  <tr>
+    <td style="font-size:14px;line-height:1.7;color:#5f3b28;">
+      <strong style="color:#4a2c1e;">Et maintenant ?</strong><br>
+      <span style="color:#c08457;">●</span>&nbsp; L'équipe du club examine votre dossier.<br>
+      <span style="color:#c08457;">●</span>&nbsp; Vous pourrez être convoqués à un entretien.<br>
+      <span style="color:#c08457;">●</span>&nbsp; La décision s'affichera sur la page de suivi.
+    </td>
+  </tr>
+</table>
+
+{% include "emails/_bouton.html" %}
+{% endblock %}
