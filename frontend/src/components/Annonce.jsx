@@ -2,7 +2,7 @@ import { CalendarDays, Megaphone, Users, Wrench } from 'lucide-react';
 import { formatDateLimite } from '../lib/useDateLimite.js';
 
 const POINTS = [
-  { icone: Users, titre: 'Départements TIC et Automobile', texte: 'Développeurs, administrateurs systèmes, spécialistes réseaux et IoT, techniciens automobiles : des équipes de 1 à 6 membres, mixtes ou non.' },
+  { icone: Users, titre: 'Départements TIC et Automobile', texte: 'Développeurs, administrateurs systèmes, spécialistes réseaux et IoT, techniciens automobiles : des équipes de 3 à 6 membres, mixtes ou non.' },
   { icone: Wrench, titre: 'Des ateliers réels', texte: 'Incubateur numérique et atelier automobile : les projets se construisent avec les équipements du CIAT.' },
   { icone: CalendarDays, titre: 'Première cohorte 2026-2027', texte: 'Les groupes retenus démarrent l’accompagnement dès la fin des sélections.' },
 ];

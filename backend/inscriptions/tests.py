@@ -19,6 +19,8 @@ PAYLOAD = {
         {"nom": "Diop", "prenom": "Awa", "departement": "TIC", "metier": "Développement Backend"},
         {"nom": "Fall", "prenom": "Moussa", "departement": "Automobile",
          "metier": "Technicien Supérieur en Électromécanique Automobile"},
+        {"nom": "Ndiaye", "prenom": "Fatou", "departement": "TIC",
+         "metier": "Réseaux, Sécurité et Internet des Objets (IoT)"},
     ],
 }
 
@@ -32,7 +34,7 @@ class InscriptionTests(APITestCase):
         self.assertEqual(r.status_code, 201, r.data)
         self.assertRegex(r.data["reference"], r"^CIAT-\d{4}-[A-Z2-9]{6}$")
         ins = Inscription.objects.get()
-        self.assertEqual(ins.membres.count(), 2)
+        self.assertEqual(ins.membres.count(), 3)
         self.assertEqual(ins.email, "awa.diop@exemple.sn")  # normalisé en minuscules
         # E-mail de confirmation contenant la référence
         self.assertEqual(len(mail.outbox), 1)
@@ -63,11 +65,23 @@ class InscriptionTests(APITestCase):
 
     def test_filiere_coherente_avec_departement(self):
         mauvais = {**PAYLOAD["membres"][0], "departement": "Automobile"}  # filière TIC
-        r = self.client.post("/api/inscriptions/", {**PAYLOAD, "membres": [mauvais]}, format="json")
+        r = self.client.post("/api/inscriptions/",
+                             {**PAYLOAD, "membres": [mauvais, *PAYLOAD["membres"][1:]]}, format="json")
         self.assertEqual(r.status_code, 400)
+        self.assertIn("metier", r.data["membres"][0])
         inconnu = {**PAYLOAD["membres"][0], "departement": "Agriculture"}
-        r = self.client.post("/api/inscriptions/", {**PAYLOAD, "membres": [inconnu]}, format="json")
+        r = self.client.post("/api/inscriptions/",
+                             {**PAYLOAD, "membres": [inconnu, *PAYLOAD["membres"][1:]]}, format="json")
         self.assertEqual(r.status_code, 400)
+        self.assertIn("departement", r.data["membres"][0])
+
+    def test_minimum_trois_membres(self):
+        for n in (0, 1, 2):
+            r = self.client.post("/api/inscriptions/", {**PAYLOAD, "membres": PAYLOAD["membres"][:n]}, format="json")
+            self.assertEqual(r.status_code, 400, n)
+            self.assertIn("membres", r.data)
+        r = self.client.post("/api/inscriptions/", PAYLOAD, format="json")
+        self.assertEqual(r.status_code, 201, r.data)
 
     def test_nom_groupe_unique(self):
         self.client.post("/api/inscriptions/", PAYLOAD, format="json")

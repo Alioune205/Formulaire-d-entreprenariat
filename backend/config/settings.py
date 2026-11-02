@@ -182,4 +182,4 @@ DEFAULT_FROM_EMAIL = os.environ.get(
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
 
 # Clôture des inscriptions (heure de Dakar). Format ISO 8601.
-DATE_LIMITE_INSCRIPTION = os.environ.get("DATE_LIMITE_INSCRIPTION", "2026-11-09T23:59:59+00:00")
+DATE_LIMITE_INSCRIPTION = os.environ.get("DATE_LIMITE_INSCRIPTION", "2026-11-11T23:59:59+00:00")

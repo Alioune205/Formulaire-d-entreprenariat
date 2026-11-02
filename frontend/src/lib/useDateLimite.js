@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { api } from './api.js';
 
-// Valeur de secours si l'API est injoignable : lundi 9 novembre 2026, 23 h 59 (heure de Dakar = UTC).
-const DATE_LIMITE_SECOURS = '2026-11-09T23:59:59+00:00';
+// Valeur de secours si l'API est injoignable : mercredi 11 novembre 2026, 23 h 59 (heure de Dakar = UTC).
+const DATE_LIMITE_SECOURS = '2026-11-11T23:59:59+00:00';
 
 /**
  * Renvoie la date limite d'inscription et le temps restant, mis à jour chaque seconde.

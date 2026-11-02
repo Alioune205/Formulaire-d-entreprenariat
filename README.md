@@ -9,12 +9,12 @@ Plateforme d'inscription des groupes au Club d'Entrepreneuriat.
 
 **Formulaire public** (`/`)
 - Nom du groupe, nom du projet, **e-mail du responsable** (reçoit la référence par e-mail)
-- Membres (1 à 6) : nom, prénom, département (TIC ou Automobile), filière — ajout / retrait dynamique
+- Membres (3 à 6) : nom, prénom, département (TIC ou Automobile), filière — ajout / retrait dynamique
 - Description du projet (30 caractères minimum)
 - **Bouton d'engagement** : l'envoi n'est possible qu'une fois le groupe engagé
 - Validation côté client **et** côté serveur, nom de groupe unique, référence aléatoire `CIAT-2026-7KQ4MZ` renvoyée
 
-**Compte à rebours** : clôture le **lundi 9 novembre 2026 à 23 h 59** (heure de Dakar).
+**Compte à rebours** : clôture le **mercredi 11 novembre 2026 à 23 h 59** (heure de Dakar).
 Après cette date, le formulaire est remplacé par un message et Django refuse les nouvelles inscriptions.
 Date modifiable via la variable `DATE_LIMITE_INSCRIPTION`.
 

@@ -4,6 +4,7 @@ from rest_framework import serializers
 
 from .models import Inscription, Membre
 
+MIN_MEMBRES = 3
 MAX_MEMBRES = 6
 
 # Départements et filières (métiers) de l'ISEP Amadou Trawaré.
@@ -88,8 +89,8 @@ class InscriptionPubliqueSerializer(serializers.ModelSerializer):
         return value
 
     def validate_membres(self, value):
-        if not value:
-            raise serializers.ValidationError("Ajoutez au moins un membre.")
+        if len(value) < MIN_MEMBRES:
+            raise serializers.ValidationError(f"Un groupe compte au minimum {MIN_MEMBRES} membres.")
         if len(value) > MAX_MEMBRES:
             raise serializers.ValidationError(f"Un groupe compte au maximum {MAX_MEMBRES} membres.")
         return value

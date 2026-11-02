@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { api, ErreurApi } from '../lib/api.js';
 import CompteARebours from './CompteARebours.jsx';
-import { FILIERES, LIBELLES_DEPARTEMENTS, MAX_MEMBRES } from '../lib/filieres.js';
+import { FILIERES, LIBELLES_DEPARTEMENTS, MAX_MEMBRES, MIN_MEMBRES } from '../lib/filieres.js';
 
 const MIN_DESCRIPTION = 30;
 
@@ -21,7 +21,7 @@ const etatInitial = () => ({
   nom_projet: '',
   email: '',
   description_projet: '',
-  membres: [membreVide()],
+  membres: Array.from({ length: MIN_MEMBRES }, membreVide),
   engagement: false,
 });
 
@@ -276,7 +276,7 @@ export default function FormulaireInscription({ temps }) {
               {/* 2. Membres */}
               <div className="border-t border-brun-100 pt-8">
                 <TitreBloc icone={UserRound} numero={2}>
-                  Les membres <span className="font-semibold normal-case tracking-normal text-brun-400">({form.membres.length}/{MAX_MEMBRES})</span>
+                  Les membres <span className="font-semibold normal-case tracking-normal text-brun-400">({form.membres.length} — de {MIN_MEMBRES} à {MAX_MEMBRES} membres)</span>
                 </TitreBloc>
 
                 <div className="space-y-4">
@@ -286,7 +286,7 @@ export default function FormulaireInscription({ temps }) {
                         <legend className="text-sm font-bold text-brun-700">
                           Membre {i + 1}{i === 0 && <span className="ml-2 rounded-md bg-caramel-100 px-2 py-0.5 text-xs font-semibold text-caramel-600">Responsable</span>}
                         </legend>
-                        {form.membres.length > 1 && (
+                        {form.membres.length > MIN_MEMBRES && (
                           <button
                             type="button"
                             onClick={() => retirerMembre(i)}
