@@ -93,6 +93,12 @@ def calculer_recap(statut=None):
             "acceptes": acceptes.count(),
             "envoyes": acceptes.exclude(acceptation_envoyee_le=None).count(),
             "a_envoyer": acceptes.filter(acceptation_envoyee_le=None).exclude(email="").count(),
-            "sans_email": acceptes.filter(email="").count(),
+            # Groupes non rejetés sans adresse e-mail (inscrits avant l'ajout du champ) : non joignables
+            "sans_email": tous.exclude(statut=Inscription.Statut.REJETE).filter(email="").count(),
+            # Groupes qui recevront l'e-mail avec « Envoyer à tous les groupes » (rejetés exclus)
+            "eligibles": tous.exclude(statut=Inscription.Statut.REJETE)
+                             .filter(acceptation_envoyee_le=None).exclude(email="").count(),
+            "non_acceptes": tous.filter(
+                statut__in=[Inscription.Statut.EN_ATTENTE, Inscription.Statut.ENTRETIEN]).count(),
         },
     }

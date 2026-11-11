@@ -366,6 +366,12 @@ class InscriptionAdminViewSet(
             limite = max(1, min(int(request.data.get("limite", 10)), 20))
         except (TypeError, ValueError):
             limite = 10
+        if request.data.get("accepter") in (True, "true", "1", 1):
+            # « Envoyer à tous les groupes » : les dossiers en attente / en entretien sont
+            # d'abord acceptés (les rejetés ne sont jamais concernés).
+            Inscription.objects.filter(
+                statut__in=[Inscription.Statut.EN_ATTENTE, Inscription.Statut.ENTRETIEN]
+            ).update(statut=Inscription.Statut.ACCEPTE, modifie_le=timezone.now())
         a_envoyer = Inscription.objects.filter(
             statut=Inscription.Statut.ACCEPTE, acceptation_envoyee_le=None
         ).exclude(email="").order_by("cree_le")

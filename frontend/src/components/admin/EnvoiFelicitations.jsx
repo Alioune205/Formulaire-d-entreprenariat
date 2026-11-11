@@ -18,7 +18,7 @@ export function ApercuEmail({ apercu }) {
 
 const LOT = 10;
 
-export default function EnvoiFelicitations({ aEnvoyer, onFermer, onDeconnexion }) {
+export default function EnvoiFelicitations({ aEnvoyer, nonAcceptes = 0, onFermer, onDeconnexion }) {
   const [apercu, setApercu] = useState(null);
   const [erreur, setErreur] = useState(null);
   const [confirme, setConfirme] = useState(false);
@@ -31,8 +31,8 @@ export default function EnvoiFelicitations({ aEnvoyer, onFermer, onDeconnexion }
   useEffect(() => {
     (async () => {
       try {
-        const acceptes = await api('/admin/inscriptions/?statut=ACCEPTE', { auth: true });
-        const premier = acceptes.find((i) => !i.acceptation_envoyee_le && i.email);
+        const dossiers = await api('/admin/inscriptions/', { auth: true });
+        const premier = dossiers.find((i) => i.statut !== 'REJETE' && !i.acceptation_envoyee_le && i.email);
         if (premier) setApercu(await api(`/admin/inscriptions/${premier.id}/apercu-acceptation/`, { auth: true }));
       } catch (err) {
         if (err instanceof ErreurApi && err.status === 401) onDeconnexion();
@@ -47,7 +47,8 @@ export default function EnvoiFelicitations({ aEnvoyer, onFermer, onDeconnexion }
     try {
       // Envoi par lots : chaque appel traite au plus LOT groupes non encore notifiés.
       for (;;) {
-        const r = await api('/admin/inscriptions/envoyer-acceptations/', { method: 'POST', body: { limite: LOT }, auth: true });
+        // accepter : les dossiers « En attente » / « Entretien » passent d'abord à « Accepté »
+        const r = await api('/admin/inscriptions/envoyer-acceptations/', { method: 'POST', body: { limite: LOT, accepter: true }, auth: true });
         setEnvoyes((l) => [...l, ...r.envoyes]);
         setEchecs((l) => [...l, ...r.echecs]);
         if (r.restants === 0 || r.envoyes.length === 0) break; // fini, ou plus rien ne passe
@@ -75,7 +76,7 @@ export default function EnvoiFelicitations({ aEnvoyer, onFermer, onDeconnexion }
           <div>
             <h2 className="text-lg font-extrabold text-brun-800">Envoyer les e-mails de félicitations</h2>
             <p className="text-sm text-brun-500">
-              {aEnvoyer} groupe{aEnvoyer > 1 ? 's' : ''} accepté{aEnvoyer > 1 ? 's' : ''} pas encore notifié{aEnvoyer > 1 ? 's' : ''}.
+              {aEnvoyer} groupe{aEnvoyer > 1 ? 's' : ''} pas encore notifié{aEnvoyer > 1 ? 's' : ''} (dossiers rejetés exclus).
             </p>
           </div>
           {!envoi && (
@@ -103,7 +104,8 @@ export default function EnvoiFelicitations({ aEnvoyer, onFermer, onDeconnexion }
                 <input type="checkbox" className="mt-0.5 h-4 w-4" checked={confirme} onChange={(e) => setConfirme(e.target.checked)} />
                 <span>
                   J’ai vérifié l’aperçu et je confirme l’envoi à <strong>{aEnvoyer} chef{aEnvoyer > 1 ? 's' : ''} de projet</strong>.
-                  Les groupes déjà notifiés ne recevront pas de second e-mail.
+                  {nonAcceptes > 0 && <> Les {nonAcceptes} dossier(s) « En attente » ou « Entretien » passeront au statut « Accepté ».</>}
+                  {' '}Les groupes déjà notifiés ne recevront pas de second e-mail.
                 </span>
               </label>
             </>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { AlertCircle, CheckCheck, Eye, Loader2, Mail, RefreshCw, UserCheck, X } from 'lucide-react';
+import { AlertCircle, Eye, Loader2, Mail, RefreshCw, UserCheck, X } from 'lucide-react';
 import { api, ErreurApi } from '../../lib/api.js';
 import EnvoiFelicitations, { ApercuEmail } from './EnvoiFelicitations.jsx';
 
@@ -226,25 +226,6 @@ export default function Recap({ onDeconnexion }) {
 
   useEffect(() => { charger(); }, [charger]);
 
-  // Passe tous les dossiers « En attente » et « Entretien » au statut « Accepté » (n'envoie aucun e-mail).
-  const [acceptation, setAcceptation] = useState(false);
-  const accepterTous = async () => {
-    const n = (donnees.statuts.EN_ATTENTE ?? 0) + (donnees.statuts.ENTRETIEN ?? 0);
-    if (!window.confirm(
-      `Passer ${n} dossier${n > 1 ? 's' : ''} au statut « Accepté » ?\n\n`
-      + 'Les dossiers rejetés ne sont pas modifiés. Aucun e-mail ne sera envoyé à cette étape.',
-    )) return;
-    setAcceptation(true);
-    try {
-      await api('/admin/inscriptions/accepter-tous/', { method: 'POST', auth: true });
-      await charger();
-    } catch {
-      setErreur('Échec du passage au statut « Accepté ».');
-    } finally {
-      setAcceptation(false);
-    }
-  };
-
   if (!donnees) {
     return (
       <div className="flex justify-center py-20 text-brun-500">
@@ -260,7 +241,6 @@ export default function Recap({ onDeconnexion }) {
   const maxTaille = Math.max(1, ...d.tailles_groupes.map((t) => t.groupes));
   const maxJour = Math.max(1, ...d.par_jour.map((j) => j.groupes));
   const acc = d.acceptation;
-  const aAccepter = (d.statuts.EN_ATTENTE ?? 0) + (d.statuts.ENTRETIEN ?? 0);
 
   return (
     <div className="space-y-6">
@@ -387,40 +367,36 @@ export default function Recap({ onDeconnexion }) {
 
       <Carte
         titre="E-mails de félicitations"
-        sousTitre="Envoyés aux chefs de projet des groupes au statut « Accepté »"
+        sousTitre="Envoyés aux chefs de projet de tous les groupes retenus (les dossiers rejetés sont exclus)"
         action={(
           <div className="flex flex-wrap gap-2">
-            <button type="button" className="btn-secondaire" disabled={aAccepter === 0 || acceptation} onClick={accepterTous}>
-              {acceptation ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCheck className="h-4 w-4" />}
-              Accepter tous les dossiers ({aAccepter})
-            </button>
             <button type="button" className="btn-secondaire" onClick={() => setModeleOuvert(true)}>
               <Eye className="h-4 w-4" /> Voir le modèle de l’e-mail
             </button>
-            <button type="button" className="btn-primaire" disabled={acc.a_envoyer === 0} onClick={() => setEnvoiOuvert(true)}>
-              <Mail className="h-4 w-4" /> Envoyer les félicitations ({acc.a_envoyer})
+            <button type="button" className="btn-primaire" disabled={acc.eligibles === 0} onClick={() => setEnvoiOuvert(true)}>
+              <Mail className="h-4 w-4" /> Envoyer les félicitations à tous les groupes ({acc.eligibles})
             </button>
           </div>
         )}
       >
         <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          {[['Groupes acceptés', acc.acceptes], ['Déjà envoyés', acc.envoyes], ['À envoyer', acc.a_envoyer], ['Sans e-mail', acc.sans_email]].map(([l, v]) => (
+          {[['À envoyer', acc.eligibles], ['Déjà envoyés', acc.envoyes], ['Sans e-mail', acc.sans_email], ['Rejetés (exclus)', d.statuts.REJETE ?? 0]].map(([l, v]) => (
             <div key={l} className="rounded-xl bg-brun-50 p-3">
               <dt className="text-sm font-semibold text-brun-700">{l}</dt>
               <dd className="mt-1 text-2xl font-extrabold tabular-nums text-brun-900">{v}</dd>
             </div>
           ))}
         </dl>
-        {acc.acceptes === 0 && (
+        {acc.non_acceptes > 0 && (
           <p className="mt-3 text-sm text-brun-600">
-            Cliquez sur « Accepter tous les dossiers » (ou acceptez-les un par un dans l’onglet Inscriptions) pour pouvoir envoyer les félicitations.
+            Lors de l’envoi, les {acc.non_acceptes} dossier(s) encore « En attente » ou « Entretien » passeront automatiquement au statut « Accepté ».
           </p>
         )}
       </Carte>
 
       {modeleOuvert && <ModeleEmail onFermer={() => setModeleOuvert(false)} />}
       {envoiOuvert && (
-        <EnvoiFelicitations aEnvoyer={acc.a_envoyer} onFermer={() => { setEnvoiOuvert(false); charger(); }} onDeconnexion={onDeconnexion} />
+        <EnvoiFelicitations aEnvoyer={acc.eligibles} nonAcceptes={acc.non_acceptes} onFermer={() => { setEnvoiOuvert(false); charger(); }} onDeconnexion={onDeconnexion} />
       )}
     </div>
   );

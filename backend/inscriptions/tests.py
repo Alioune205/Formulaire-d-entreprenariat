@@ -344,6 +344,19 @@ class BackOfficeTests(APITestCase):
         self.assertEqual(len(mail.outbox), 0)  # accepter n'envoie rien
         self.assertEqual(self.client.get("/api/admin/inscriptions/recap/").data["acceptation"]["a_envoyer"], 2)
 
+    def test_envoyer_a_tous_accepte_puis_envoie(self):
+        self._inscrire("Groupe P", "p@exemple.sn")  # en attente
+        self._inscrire("Groupe E", "e@exemple.sn", Inscription.Statut.ENTRETIEN)
+        self._inscrire("Groupe R", "r@exemple.sn", Inscription.Statut.REJETE)
+        self.assertEqual(self.client.get("/api/admin/inscriptions/recap/").data["acceptation"]["eligibles"], 2)
+        mail.outbox.clear()
+        r = self.client.post("/api/admin/inscriptions/envoyer-acceptations/", {"limite": 10, "accepter": True}, format="json")
+        self.assertEqual((len(r.data["envoyes"]), r.data["restants"]), (2, 0))
+        self.assertEqual(sorted(m.to[0] for m in mail.outbox), ["e@exemple.sn", "p@exemple.sn"])
+        self.assertEqual(Inscription.objects.get(nom_groupe="Groupe R").statut, "REJETE")
+        self.assertNotIn("Suivre mon dossier", mail.outbox[0].alternatives[0][0])
+        self.assertIn("Félicitations", mail.outbox[0].subject)
+
     def test_email_acceptation_sans_emoji(self):
         html = self.client.get("/api/admin/inscriptions/modele-acceptation/").data["html"]
         import re

@@ -140,27 +140,25 @@ def _message_acceptation(inscription, connection=None, membres=None):
     membres = membres if membres is not None else list(inscription.membres.order_by("id"))
     chef = membres[0] if membres else None
     salutation = f"Bonjour {chef.prenom} {chef.nom}," if chef else "Bonjour,"
-    lien = lien_suivi(inscription)
-    sujet = f"Club d'Entrepreneuriat du CIAT — Votre projet « {inscription.nom_projet} » est retenu"
+    sujet = f"Félicitations — Votre projet « {inscription.nom_projet} » est retenu au Club d'Entrepreneuriat du CIAT"
     texte = (
         f"{salutation}\n\n"
-        f"Nous avons le plaisir de vous informer que le projet « {inscription.nom_projet} », présenté par "
+        f"Félicitations ! Nous avons le plaisir de vous informer que le projet « {inscription.nom_projet} », présenté par "
         f"le groupe « {inscription.nom_groupe} », a été retenu pour intégrer le Club d'Entrepreneuriat du "
         "CIAT de l'ISEP Amadou Trawaré pour l'année 2026-2027.\n\n"
         "Une réunion de bienvenue réunira prochainement l'ensemble des groupes retenus. La date, l'heure "
         "et le lieu vous seront communiqués par e-mail dans les prochains jours. Nous vous invitons à "
         "préparer une courte présentation de votre projet (deux minutes environ).\n\n"
-        f"Référence du dossier : {inscription.reference}\n{lien}\n\n"
+        f"Référence du dossier : {inscription.reference}\n\n"
         "Nous vous adressons nos sincères félicitations.\n\nCordialement,"
     )
     contexte = {
         "apercu": "Votre projet a été retenu. Les informations sur la réunion de bienvenue suivront.",
         "surtitre": "Résultat de la sélection",
-        "titre": "Votre projet est retenu",
+        "titre": "Félicitations, votre projet est retenu",
         "salutation": salutation,
         "dossier": inscription,
         "membres": membres,
-        "lien_suivi": lien,
     }
     return _construire(inscription.email, sujet, texte, "emails/acceptation.html", contexte, connection)
 
