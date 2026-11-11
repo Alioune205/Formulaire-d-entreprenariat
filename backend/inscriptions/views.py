@@ -316,6 +316,17 @@ class InscriptionAdminViewSet(
 
     # --- E-mails de félicitations -------------------------------------------
 
+    @action(detail=False, methods=["post"], url_path="accepter-tous")
+    def accepter_tous(self, request):
+        """Passe au statut « Accepté » tous les dossiers en attente ou en entretien.
+
+        Les dossiers rejetés ne sont pas modifiés. N'envoie aucun e-mail.
+        """
+        n = Inscription.objects.filter(
+            statut__in=[Inscription.Statut.EN_ATTENTE, Inscription.Statut.ENTRETIEN]
+        ).update(statut=Inscription.Statut.ACCEPTE, modifie_le=timezone.now())
+        return Response({"acceptes": n})
+
     @action(detail=False, methods=["get"], url_path="modele-acceptation")
     def modele_acceptation(self, request):
         """Le modèle de l'e-mail de félicitations, rempli avec un groupe fictif. N'envoie rien."""

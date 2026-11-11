@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { AlertCircle, Eye, Loader2, Mail, RefreshCw, UserCheck, X } from 'lucide-react';
+import { AlertCircle, CheckCheck, Eye, Loader2, Mail, RefreshCw, UserCheck, X } from 'lucide-react';
 import { api, ErreurApi } from '../../lib/api.js';
 import EnvoiFelicitations, { ApercuEmail } from './EnvoiFelicitations.jsx';
 
@@ -226,6 +226,25 @@ export default function Recap({ onDeconnexion }) {
 
   useEffect(() => { charger(); }, [charger]);
 
+  // Passe tous les dossiers « En attente » et « Entretien » au statut « Accepté » (n'envoie aucun e-mail).
+  const [acceptation, setAcceptation] = useState(false);
+  const accepterTous = async () => {
+    const n = (donnees.statuts.EN_ATTENTE ?? 0) + (donnees.statuts.ENTRETIEN ?? 0);
+    if (!window.confirm(
+      `Passer ${n} dossier${n > 1 ? 's' : ''} au statut « Accepté » ?\n\n`
+      + 'Les dossiers rejetés ne sont pas modifiés. Aucun e-mail ne sera envoyé à cette étape.',
+    )) return;
+    setAcceptation(true);
+    try {
+      await api('/admin/inscriptions/accepter-tous/', { method: 'POST', auth: true });
+      await charger();
+    } catch {
+      setErreur('Échec du passage au statut « Accepté ».');
+    } finally {
+      setAcceptation(false);
+    }
+  };
+
   if (!donnees) {
     return (
       <div className="flex justify-center py-20 text-brun-500">
@@ -241,6 +260,7 @@ export default function Recap({ onDeconnexion }) {
   const maxTaille = Math.max(1, ...d.tailles_groupes.map((t) => t.groupes));
   const maxJour = Math.max(1, ...d.par_jour.map((j) => j.groupes));
   const acc = d.acceptation;
+  const aAccepter = (d.statuts.EN_ATTENTE ?? 0) + (d.statuts.ENTRETIEN ?? 0);
 
   return (
     <div className="space-y-6">
@@ -370,6 +390,10 @@ export default function Recap({ onDeconnexion }) {
         sousTitre="Envoyés aux chefs de projet des groupes au statut « Accepté »"
         action={(
           <div className="flex flex-wrap gap-2">
+            <button type="button" className="btn-secondaire" disabled={aAccepter === 0 || acceptation} onClick={accepterTous}>
+              {acceptation ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCheck className="h-4 w-4" />}
+              Accepter tous les dossiers ({aAccepter})
+            </button>
             <button type="button" className="btn-secondaire" onClick={() => setModeleOuvert(true)}>
               <Eye className="h-4 w-4" /> Voir le modèle de l’e-mail
             </button>
@@ -389,7 +413,7 @@ export default function Recap({ onDeconnexion }) {
         </dl>
         {acc.acceptes === 0 && (
           <p className="mt-3 text-sm text-brun-600">
-            Passez des dossiers au statut « Accepté » dans l’onglet Inscriptions pour pouvoir leur envoyer les félicitations.
+            Cliquez sur « Accepter tous les dossiers » (ou acceptez-les un par un dans l’onglet Inscriptions) pour pouvoir envoyer les félicitations.
           </p>
         )}
       </Carte>

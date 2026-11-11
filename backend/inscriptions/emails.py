@@ -141,21 +141,22 @@ def _message_acceptation(inscription, connection=None, membres=None):
     chef = membres[0] if membres else None
     salutation = f"Bonjour {chef.prenom} {chef.nom}," if chef else "Bonjour,"
     lien = lien_suivi(inscription)
-    sujet = f"Félicitations ! « {inscription.nom_projet} » est accepté au Club d'Entrepreneuriat"
+    sujet = f"Club d'Entrepreneuriat du CIAT — Votre projet « {inscription.nom_projet} » est retenu"
     texte = (
         f"{salutation}\n\n"
-        f"Excellente nouvelle : le projet « {inscription.nom_projet} » porté par le groupe "
-        f"« {inscription.nom_groupe} » a été retenu par le Club d'Entrepreneuriat du CIAT.\n\n"
-        "Prochaine étape : une réunion de bienvenue réunira tous les groupes retenus. "
-        "La date, l'heure et le lieu vous seront communiqués très prochainement par e-mail.\n\n"
-        "D'ici là, partagez la nouvelle avec les membres de votre groupe et préparez une "
-        "courte présentation de votre projet (2 minutes).\n\n"
-        f"Votre référence de dossier : {inscription.reference}\n{lien}"
+        f"Nous avons le plaisir de vous informer que le projet « {inscription.nom_projet} », présenté par "
+        f"le groupe « {inscription.nom_groupe} », a été retenu pour intégrer le Club d'Entrepreneuriat du "
+        "CIAT de l'ISEP Amadou Trawaré pour l'année 2026-2027.\n\n"
+        "Une réunion de bienvenue réunira prochainement l'ensemble des groupes retenus. La date, l'heure "
+        "et le lieu vous seront communiqués par e-mail dans les prochains jours. Nous vous invitons à "
+        "préparer une courte présentation de votre projet (deux minutes environ).\n\n"
+        f"Référence du dossier : {inscription.reference}\n{lien}\n\n"
+        "Nous vous adressons nos sincères félicitations.\n\nCordialement,"
     )
     contexte = {
-        "apercu": "Votre projet a été retenu. Une réunion de bienvenue vous attend.",
-        "surtitre": "Projet accepté",
-        "titre": "Félicitations, votre projet est retenu !",
+        "apercu": "Votre projet a été retenu. Les informations sur la réunion de bienvenue suivront.",
+        "surtitre": "Résultat de la sélection",
+        "titre": "Votre projet est retenu",
         "salutation": salutation,
         "dossier": inscription,
         "membres": membres,

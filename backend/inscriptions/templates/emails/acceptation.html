@@ -1,87 +1,77 @@
 {% extends "emails/base.html" %}
 {% block contenu %}
-{# Bandeau de célébration #}
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px;">
-  <tr>
-    <td align="center" style="background-color:#f6e9dc;border-radius:14px;padding:22px 16px;">
-      <p style="margin:0;font-size:34px;line-height:1;">🎉</p>
-      <p style="margin:10px 0 0;font-size:13px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;color:#a66c42;">
-        Bienvenue dans la cohorte 2026-2027
-      </p>
-    </td>
-  </tr>
-</table>
-
-<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#5f3b28;">
+<p style="margin:0 0 18px;font-size:15px;line-height:1.7;color:#331e14;">
   {{ salutation }}
 </p>
-<p style="margin:0 0 24px;font-size:15px;line-height:1.7;color:#5f3b28;">
-  Excellente nouvelle : après examen des candidatures, le projet
-  <strong style="color:#331e14;">{{ dossier.nom_projet }}</strong> porté par le groupe
-  <strong style="color:#331e14;">{{ dossier.nom_groupe }}</strong> a été <strong style="color:#331e14;">retenu</strong>
-  par le Club d'Entrepreneuriat du CIAT. Toute l'équipe vous félicite !
+
+<p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#5f3b28;">
+  Nous avons le plaisir de vous informer que le projet
+  <strong style="color:#331e14;">{{ dossier.nom_projet }}</strong>, présenté par le groupe
+  <strong style="color:#331e14;">{{ dossier.nom_groupe }}</strong>, a été retenu pour intégrer le
+  Club d'Entrepreneuriat du Centre d'Innovation, d'Application et de Transfert (CIAT) de l'ISEP Amadou Trawaré
+  pour l'année 2026-2027.
 </p>
 
-{# Fiche du projet #}
+<p style="margin:0 0 26px;font-size:15px;line-height:1.7;color:#5f3b28;">
+  En tant que chef de projet, nous vous remercions de transmettre cette information à l'ensemble des membres de votre groupe.
+</p>
+
+{# Récapitulatif du dossier #}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
-       style="border:1px solid #e3d0c1;border-radius:14px;">
+       style="border:1px solid #e3d0c1;border-radius:10px;border-collapse:separate;">
   <tr>
-    <td style="padding:18px 20px;border-bottom:1px solid #f2e9e2;">
-      <p style="margin:0 0 2px;font-size:12px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:#a66c42;">Projet</p>
-      <p style="margin:0;font-size:18px;font-weight:bold;color:#331e14;">{{ dossier.nom_projet }}</p>
-      <p style="margin:4px 0 0;font-size:13px;color:#7f5239;">
-        Groupe {{ dossier.nom_groupe }} · Réf. <span style="font-family:'Courier New',Courier,monospace;font-weight:bold;color:#4a2c1e;">{{ dossier.reference }}</span>
-      </p>
+    <td colspan="2" style="background-color:#faf6f3;border-bottom:1px solid #e3d0c1;border-radius:10px 10px 0 0;padding:12px 18px;
+                           font-size:12px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:#7f5239;">
+      Récapitulatif du dossier
     </td>
   </tr>
   <tr>
-    <td style="padding:14px 20px 16px;">
-      <p style="margin:0 0 8px;font-size:12px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:#a66c42;">
-        L'équipe ({{ membres|length }} membres)
-      </p>
-      {% for m in membres %}
-        <p style="margin:0 0 4px;font-size:14px;line-height:1.5;color:#5f3b28;">
-          <span style="color:#c08457;">●</span>&nbsp; <strong style="color:#331e14;">{{ m.prenom }} {{ m.nom }}</strong>
-          {% if forloop.first %}<span style="font-size:12px;color:#a66c42;"> — chef de projet</span>{% endif %}
-          <br><span style="font-size:12px;color:#a06e4e;padding-left:18px;">{{ m.metier }}</span>
-        </p>
-      {% endfor %}
+    <td style="width:38%;padding:12px 18px 4px;font-size:13px;color:#7f5239;vertical-align:top;">Projet</td>
+    <td style="padding:12px 18px 4px;font-size:14px;font-weight:bold;color:#331e14;">{{ dossier.nom_projet }}</td>
+  </tr>
+  <tr>
+    <td style="padding:4px 18px;font-size:13px;color:#7f5239;vertical-align:top;">Groupe</td>
+    <td style="padding:4px 18px;font-size:14px;color:#331e14;">{{ dossier.nom_groupe }}</td>
+  </tr>
+  <tr>
+    <td style="padding:4px 18px;font-size:13px;color:#7f5239;vertical-align:top;">Référence</td>
+    <td style="padding:4px 18px;font-size:14px;font-family:'Courier New',Courier,monospace;font-weight:bold;color:#331e14;">{{ dossier.reference }}</td>
+  </tr>
+  <tr>
+    <td style="padding:4px 18px 14px;font-size:13px;color:#7f5239;vertical-align:top;">Membres</td>
+    <td style="padding:4px 18px 14px;font-size:14px;line-height:1.6;color:#331e14;">
+      {% for m in membres %}{{ m.prenom }} {{ m.nom }}{% if forloop.first %} <span style="color:#7f5239;">(chef de projet)</span>{% endif %}<br>{% endfor %}
     </td>
   </tr>
 </table>
 
 {# Prochaine étape #}
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 0;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 0;">
   <tr>
-    <td style="background-color:#4a2c1e;border-radius:14px;padding:22px 22px;">
-      <p style="margin:0 0 4px;font-size:12px;font-weight:bold;letter-spacing:1.5px;text-transform:uppercase;color:#ddb28c;">
-        📅&nbsp; Prochaine étape
-      </p>
-      <p style="margin:0 0 8px;font-size:19px;font-weight:bold;color:#ffffff;">Réunion de bienvenue</p>
-      <p style="margin:0;font-size:14px;line-height:1.6;color:#f2e9e2;">
-        Tous les groupes retenus seront réunis pour découvrir le programme, rencontrer l'équipe du CIAT
-        et les autres porteurs de projets.
-        <strong style="color:#ffffff;">La date, l'heure et le lieu vous seront communiqués très prochainement par e-mail.</strong>
+    <td style="border-left:4px solid #c08457;background-color:#faf6f3;padding:16px 20px;">
+      <p style="margin:0 0 6px;font-size:15px;font-weight:bold;color:#4a2c1e;">Réunion de bienvenue</p>
+      <p style="margin:0;font-size:14px;line-height:1.7;color:#5f3b28;">
+        Une réunion de bienvenue réunira prochainement l'ensemble des groupes retenus afin de présenter
+        le programme d'accompagnement et l'équipe du CIAT. La date, l'heure et le lieu vous seront
+        communiqués par e-mail dans les prochains jours.
       </p>
     </td>
   </tr>
 </table>
 
-{# À préparer #}
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 0;">
-  <tr>
-    <td style="font-size:14px;line-height:1.8;color:#5f3b28;">
-      <strong style="color:#4a2c1e;">D'ici là :</strong><br>
-      <span style="color:#c08457;">✓</span>&nbsp; Partagez la bonne nouvelle avec tous les membres du groupe.<br>
-      <span style="color:#c08457;">✓</span>&nbsp; Préparez une présentation de votre projet en <strong>2 minutes</strong>.<br>
-      <span style="color:#c08457;">✓</span>&nbsp; Surveillez votre boîte mail (et les spams) pour la date de la réunion.
-    </td>
-  </tr>
-</table>
+<p style="margin:26px 0 0;font-size:15px;line-height:1.7;color:#5f3b28;">
+  Nous vous invitons à préparer une courte présentation de votre projet (deux minutes environ)
+  en vue de cette rencontre. Vous pouvez suivre l'état de votre dossier à tout moment avec votre référence.
+</p>
 
 {% include "emails/_bouton.html" %}
 
-<p style="margin:28px 0 0;font-size:15px;line-height:1.6;color:#5f3b28;">
-  Encore bravo, et à très bientôt au CIAT !
+<p style="margin:30px 0 0;font-size:15px;line-height:1.7;color:#5f3b28;">
+  Nous vous adressons nos sincères félicitations et nous réjouissons de vous accompagner.
+</p>
+<p style="margin:18px 0 0;font-size:15px;line-height:1.6;color:#331e14;">
+  Cordialement,<br>
+  <strong>L'équipe du Club d'Entrepreneuriat</strong><br>
+  <span style="color:#7f5239;">CIAT — ISEP Amadou Trawaré</span>
 </p>
 {% endblock %}

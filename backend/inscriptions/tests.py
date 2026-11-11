@@ -288,7 +288,7 @@ class BackOfficeTests(APITestCase):
         ins.statut = Inscription.Statut.ACCEPTE
         ins.save()
         apercu = self.client.get(f"/api/admin/inscriptions/{ins.pk}/apercu-acceptation/").data
-        self.assertIn("Félicitations", apercu["sujet"])
+        self.assertIn("est retenu", apercu["sujet"])
         self.assertIn("Awa Diop", apercu["html"])  # personnalisé avec le chef de projet
         self.assertNotIn("cid:logo-ciat", apercu["html"])
         self.assertEqual(len(mail.outbox), 0)  # l'aperçu n'envoie rien
@@ -332,6 +332,22 @@ class BackOfficeTests(APITestCase):
         self.assertEqual(self.client.get("/api/admin/membres/?a_verifier=1").data, [])
         recap = self.client.get("/api/admin/inscriptions/recap/").data["genre"]
         self.assertEqual(recap["pct_filles_identifies"] + recap["pct_garcons_identifies"], 100)
+
+    def test_accepter_tous_sans_toucher_aux_rejetes_ni_envoyer(self):
+        self._inscrire("Groupe A", "a@exemple.sn")
+        self._inscrire("Groupe B", "b@exemple.sn", Inscription.Statut.ENTRETIEN)
+        self._inscrire("Groupe C", "c@exemple.sn", Inscription.Statut.REJETE)
+        mail.outbox.clear()
+        r = self.client.post("/api/admin/inscriptions/accepter-tous/")
+        self.assertEqual(r.data["acceptes"], 2)
+        self.assertEqual(Inscription.objects.get(nom_groupe="Groupe C").statut, "REJETE")
+        self.assertEqual(len(mail.outbox), 0)  # accepter n'envoie rien
+        self.assertEqual(self.client.get("/api/admin/inscriptions/recap/").data["acceptation"]["a_envoyer"], 2)
+
+    def test_email_acceptation_sans_emoji(self):
+        html = self.client.get("/api/admin/inscriptions/modele-acceptation/").data["html"]
+        import re
+        self.assertIsNone(re.search("[🌀-🫿☀-➿]", html))
 
     def test_routes_back_office_protegees(self):
         self.client.credentials()
