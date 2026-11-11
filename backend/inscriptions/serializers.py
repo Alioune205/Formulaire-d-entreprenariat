@@ -109,10 +109,12 @@ class MembreAdminSerializer(serializers.ModelSerializer):
 
     genre_estime = serializers.SerializerMethodField()
     genre_effectif = serializers.SerializerMethodField()
+    nom_groupe = serializers.CharField(source="inscription.nom_groupe", read_only=True)
 
     class Meta:
         model = Membre
-        fields = ["id", "nom", "prenom", "departement", "metier", "genre", "genre_estime", "genre_effectif"]
+        fields = ["id", "nom", "prenom", "departement", "metier", "genre", "genre_estime", "genre_effectif",
+                  "nom_groupe"]
 
     def get_genre_estime(self, obj):
         return estimer_genre(obj.prenom)
@@ -145,4 +147,4 @@ class MembreGenreSerializer(MembreAdminSerializer):
     """Back-office : corriger le genre estimé d'un membre ("" = revenir à l'estimation)."""
 
     class Meta(MembreAdminSerializer.Meta):
-        read_only_fields = ["id", "nom", "prenom", "departement", "metier"]
+        read_only_fields = ["id", "nom", "prenom", "departement", "metier", "nom_groupe"]

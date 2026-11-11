@@ -20,7 +20,7 @@ from django.contrib.auth import authenticate
 from django.core.mail import get_connection
 
 from .emails import (
-    apercu_acceptation, apres_reponse, envoyer_acceptation, envoyer_alerte_regeneration, envoyer_code,
+    apercu_acceptation, apercu_modele_acceptation, apres_reponse, envoyer_acceptation, envoyer_alerte_regeneration, envoyer_code,
     envoyer_confirmation,
 )
 from .models import CodeVerification, Inscription, Membre
@@ -316,6 +316,11 @@ class InscriptionAdminViewSet(
 
     # --- E-mails de félicitations -------------------------------------------
 
+    @action(detail=False, methods=["get"], url_path="modele-acceptation")
+    def modele_acceptation(self, request):
+        """Le modèle de l'e-mail de félicitations, rempli avec un groupe fictif. N'envoie rien."""
+        return Response(apercu_modele_acceptation())
+
     @action(detail=True, methods=["get"], url_path="apercu-acceptation")
     def apercu_acceptation(self, request, pk=None):
         return Response(apercu_acceptation(self.get_object()))
@@ -384,9 +389,21 @@ class InscriptionAdminViewSet(
         })
 
 
-class MembreAdminViewSet(mixins.UpdateModelMixin, viewsets.GenericViewSet):
-    """PATCH /api/admin/membres/<id>/ {genre} — compléter le genre d'un membre (staff uniquement)."""
+class MembreAdminViewSet(mixins.ListModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet):
+    """/api/admin/membres/ (staff uniquement)
 
-    queryset = Membre.objects.all()
+    GET  ?a_verifier=1 : membres dont le genre n'a pu être déduit du prénom ni corrigé.
+    PATCH <id>/ {genre} : corriger le genre d'un membre ("" = revenir à l'estimation).
+    """
+
     serializer_class = MembreGenreSerializer
-    http_method_names = ["patch"]
+    http_method_names = ["get", "patch"]
+
+    def get_queryset(self):
+        return Membre.objects.select_related("inscription").order_by("inscription__nom_groupe", "id")
+
+    def list(self, request, *args, **kwargs):
+        membres = self.get_queryset()
+        if request.query_params.get("a_verifier"):
+            membres = [m for m in membres if not genre_effectif(m)]
+        return Response(self.get_serializer(membres, many=True).data)

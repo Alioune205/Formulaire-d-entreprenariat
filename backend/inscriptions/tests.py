@@ -312,6 +312,27 @@ class BackOfficeTests(APITestCase):
         self.assertEqual(len(mail.outbox), 5)
         self.assertEqual(sorted(m.to[0] for m in mail.outbox), [f"g{i}@exemple.sn" for i in range(5)])
 
+    def test_modele_email_sans_envoi(self):
+        mail.outbox.clear()
+        r = self.client.get("/api/admin/inscriptions/modele-acceptation/")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("Awa Diop", r.data["html"])
+        self.assertIn("réunion de bienvenue", r.data["html"].lower())
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_liste_membres_a_verifier(self):
+        ins = self._inscrire("G3", "g3@exemple.sn")
+        fatou = ins.membres.get(prenom="Fatou")
+        fatou.prenom = "Xyzabc"  # prénom inconnu
+        fatou.save()
+        r = self.client.get("/api/admin/membres/?a_verifier=1")
+        self.assertEqual([m["prenom"] for m in r.data], ["Xyzabc"])
+        self.assertEqual(r.data[0]["nom_groupe"], "G3")
+        self.client.patch(f"/api/admin/membres/{fatou.pk}/", {"genre": "F"}, format="json")
+        self.assertEqual(self.client.get("/api/admin/membres/?a_verifier=1").data, [])
+        recap = self.client.get("/api/admin/inscriptions/recap/").data["genre"]
+        self.assertEqual(recap["pct_filles_identifies"] + recap["pct_garcons_identifies"], 100)
+
     def test_routes_back_office_protegees(self):
         self.client.credentials()
         self.assertEqual(self.client.get("/api/admin/inscriptions/recap/").status_code, 401)

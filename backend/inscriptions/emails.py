@@ -136,8 +136,9 @@ def chef_de_projet(inscription):
     return inscription.membres.order_by("id").first()
 
 
-def _message_acceptation(inscription, connection=None):
-    chef = chef_de_projet(inscription)
+def _message_acceptation(inscription, connection=None, membres=None):
+    membres = membres if membres is not None else list(inscription.membres.order_by("id"))
+    chef = membres[0] if membres else None
     salutation = f"Bonjour {chef.prenom} {chef.nom}," if chef else "Bonjour,"
     lien = lien_suivi(inscription)
     sujet = f"Félicitations ! « {inscription.nom_projet} » est accepté au Club d'Entrepreneuriat"
@@ -157,7 +158,7 @@ def _message_acceptation(inscription, connection=None):
         "titre": "Félicitations, votre projet est retenu !",
         "salutation": salutation,
         "dossier": inscription,
-        "membres": list(inscription.membres.order_by("id")),
+        "membres": membres,
         "lien_suivi": lien,
     }
     return _construire(inscription.email, sujet, texte, "emails/acceptation.html", contexte, connection)
@@ -168,11 +169,27 @@ def envoyer_acceptation(inscription, connection=None):
     _message_acceptation(inscription, connection).send(fail_silently=False)
 
 
-def apercu_acceptation(inscription):
-    """HTML de l'e-mail pour l'aperçu du back-office (logo intégré en data URI)."""
+def apercu_acceptation(inscription, membres=None):
+    """HTML de l'e-mail pour l'aperçu du back-office (logo intégré en data URI). N'envoie rien."""
     import base64
 
-    msg = _message_acceptation(inscription)
+    msg = _message_acceptation(inscription, membres=membres)
     html = msg.alternatives[0][0]
     logo = "data:image/png;base64," + base64.b64encode(_logo_octets()).decode()
     return {"sujet": msg.subject, "destinataire": inscription.email, "html": html.replace("cid:logo-ciat", logo)}
+
+
+def apercu_modele_acceptation():
+    """Aperçu du modèle avec un groupe fictif (aucune donnée réelle, aucun envoi)."""
+    from types import SimpleNamespace as D
+
+    exemple = D(
+        nom_groupe="Les Bâtisseurs", nom_projet="AgriCollect", reference="CIAT-2026-EXEMPL",
+        email="chef.de.projet@exemple.sn",
+    )
+    membres = [
+        D(prenom="Awa", nom="Diop", metier="Développement Backend"),
+        D(prenom="Moussa", nom="Fall", metier="Technicien Supérieur en Électromécanique Automobile"),
+        D(prenom="Fatou", nom="Ndiaye", metier="Analyse de Performance Digitale"),
+    ]
+    return apercu_acceptation(exemple, membres=membres)

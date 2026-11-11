@@ -70,7 +70,11 @@ def calculer_recap(statut=None):
         "genre_corriges": sum(1 for m in membres if m.genre),
         "genre": {**genre, "pct_filles": _pct(genre["filles"], total_membres),
                   "pct_garcons": _pct(genre["garcons"], total_membres),
-                  "pct_non_renseigne": _pct(genre["non_renseigne"], total_membres)},
+                  "pct_non_renseigne": _pct(genre["non_renseigne"], total_membres),
+                  # Parmi les membres dont le genre est connu : filles + garçons = 100 %
+                  "identifies": genre["filles"] + genre["garcons"],
+                  "pct_filles_identifies": _pct(genre["filles"], genre["filles"] + genre["garcons"]),
+                  "pct_garcons_identifies": _pct(genre["garcons"], genre["filles"] + genre["garcons"])},
         "departements": [
             {"departement": d, **c, "pct": _pct(c["total"], total_membres)} for d, c in departements.items()
         ],

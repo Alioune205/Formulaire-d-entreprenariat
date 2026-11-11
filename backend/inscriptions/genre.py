@@ -15,6 +15,7 @@ PREFIXES_GARCONS = {"pape", "pap", "serigne", "el", "elhadji", "elhadj", "hadji"
 NEUTRES = {"mame", "maam", "mam", "ndiaye", "seydi"}
 
 FILLES = set("""
+absatou abibatou aby adjaratou akissa amie amy anna aram bigue bigué binetou daro diodio dieumba djeynaba fatma fatoumata fatimata gnima hadja hadjara kadia kadiata kadidiatou khardiata khadidja madjiguene mamy mariame mariem mariétou marietou mbathio ndieme ndiémé ndoumbe ndoumbé ngone oumou safi safiatou safietou safiétou salma sali soukeyna tacko yama zeina zeynabou dior nene mounass ndiouma adja kumba coumbis ndickou fatimatou awentou ndeye yacine marame mareme khadidiatou ndeye_fatou ramatoulaye seynabou aissatou aïssatou astel fatouma oumoul hawa aurore oceane océane nadege nadège prisca graciella ornella benedicte bénédicte josiane delphine christelle estelle noemie noémie eva jeanne lucie mathilde margaux juliette patricia priscille gisele gisèle yvonne viviane mireille brigitte florence chantal monique henriette pélagie pelagie
 aida aissa aissatou aicha awa adama_f aminata amina amy anta astou arame aram assiétou assietou
 astou ami bineta binta bintou coumba codou daba dieynaba djeneba diarra dior diouma diama diatou
 fatou fatoumata fatima fama fanta fary guedda gnagna hawa haby khady khadija khadidiatou kine
@@ -35,6 +36,7 @@ joséphine bernadette marthe martine helene hélène odile therese thérèse ros
 """.split())
 
 GARCONS = set("""
+ablaye abou aladji alfa alhassane arouna aruna badara bakary balla bara birahim bouna diene diène elimane fadel fadilou faly gana gaoussou gorgui hamidou hamady hamed issakha karim keba kéba lahad latif madicke madické magatte mbacke mbacké nar ndene ndéné niokhor papis rawane saer tamsir tapha thione yerim yoro youssoupha abdoulaziz aziz alpha amar ansoumana bassirou boubou djily hady ibra kader landing libasse mactar mamadi mohamed ousseynou sidi souleye tidiane abdourahmane abdoulahi abdallah moustapha mouhamed cheikhouna oumar ousmane assane alassane modou ndiaga mor baye pape serigne seydina sileymane babacar boubacar ibrahima idrissa lamine alexandre adrien anthony axel baptiste cedric cédric damien emmanuel florian franck gilles gregory grégory jordan lionel ludovic mathis nathan noah raymond steve teddy theo théo victor xavier yannick rodrigue herve hervé landry armel arsene arsène prosper boris cyrille fabien jules
 abdou abdoulaye abdourahmane abdoul abdel abdallah abass abbas aboubacar aboubakry adama
 ahmed ahmadou alassane alioune aliou alpha amadou amath ameth amar ansou arona assane
 babacar bamba bassirou birame biram bocar boubacar boubacary cheikh cheikhou daouda djibril
