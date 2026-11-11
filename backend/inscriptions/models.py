@@ -46,6 +46,10 @@ class Inscription(models.Model):
 
     statut = models.CharField(max_length=20, choices=Statut.choices, default=Statut.EN_ATTENTE)
     notes_admin = models.TextField("notes internes", blank=True)
+    acceptation_envoyee_le = models.DateTimeField(
+        "e-mail d'acceptation envoyé le", null=True, blank=True,
+        help_text="Évite d'envoyer deux fois l'e-mail de félicitations.",
+    )
     cree_le = models.DateTimeField("inscrit le", auto_now_add=True)
     modifie_le = models.DateTimeField(auto_now=True)
 
@@ -72,9 +76,16 @@ class Inscription(models.Model):
 class Membre(models.Model):
     """Membre d'un groupe inscrit."""
 
+    class Genre(models.TextChoices):
+        FILLE = "F", "Fille"
+        GARCON = "H", "Garçon"
+
     inscription = models.ForeignKey(Inscription, on_delete=models.CASCADE, related_name="membres")
     nom = models.CharField(max_length=80)
     prenom = models.CharField("prénom", max_length=80)
+    # Correction saisie par un admin dans le back-office. Vide = on utilise l'estimation
+    # à partir du prénom (voir genre.py). Jamais demandé dans le formulaire public.
+    genre = models.CharField(max_length=1, choices=Genre.choices, blank=True)
     departement = models.CharField("département", max_length=120)
     metier = models.CharField("métier", max_length=120)
 

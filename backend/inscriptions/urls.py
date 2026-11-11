@@ -5,6 +5,7 @@ from . import views
 
 router = DefaultRouter()
 router.register("admin/inscriptions", views.InscriptionAdminViewSet, basename="admin-inscriptions")
+router.register("admin/membres", views.MembreAdminViewSet, basename="admin-membres")
 
 urlpatterns = [
     path("inscriptions/", views.InscriptionPubliqueView.as_view(), name="inscription-publique"),

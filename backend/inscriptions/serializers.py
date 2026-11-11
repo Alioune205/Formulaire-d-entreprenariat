@@ -2,6 +2,7 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers
 
+from .genre import estimer_genre, genre_effectif
 from .models import Inscription, Membre
 
 MIN_MEMBRES = 3
@@ -103,10 +104,27 @@ class InscriptionPubliqueSerializer(serializers.ModelSerializer):
         return inscription
 
 
+class MembreAdminSerializer(serializers.ModelSerializer):
+    """Membre vu par le back-office : genre corrigé par un admin, estimé, et effectif."""
+
+    genre_estime = serializers.SerializerMethodField()
+    genre_effectif = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Membre
+        fields = ["id", "nom", "prenom", "departement", "metier", "genre", "genre_estime", "genre_effectif"]
+
+    def get_genre_estime(self, obj):
+        return estimer_genre(obj.prenom)
+
+    def get_genre_effectif(self, obj):
+        return genre_effectif(obj)
+
+
 class InscriptionAdminSerializer(serializers.ModelSerializer):
     """Utilisé par la page d'administration : lecture + modification du statut / des notes."""
 
-    membres = MembreSerializer(many=True, read_only=True)
+    membres = MembreAdminSerializer(many=True, read_only=True)
     reference = serializers.CharField(read_only=True)
     statut_libelle = serializers.CharField(source="get_statut_display", read_only=True)
 
@@ -115,9 +133,16 @@ class InscriptionAdminSerializer(serializers.ModelSerializer):
         fields = [
             "id", "reference", "nom_groupe", "nom_projet", "email", "description_projet",
             "engagement", "date_engagement", "statut", "statut_libelle", "notes_admin",
-            "cree_le", "modifie_le", "membres",
+            "cree_le", "modifie_le", "acceptation_envoyee_le", "membres",
         ]
         read_only_fields = [
             "id", "reference", "nom_groupe", "nom_projet", "email", "description_projet",
-            "engagement", "date_engagement", "cree_le", "modifie_le",
+            "engagement", "date_engagement", "cree_le", "modifie_le", "acceptation_envoyee_le",
         ]
+
+
+class MembreGenreSerializer(MembreAdminSerializer):
+    """Back-office : corriger le genre estimé d'un membre ("" = revenir à l'estimation)."""
+
+    class Meta(MembreAdminSerializer.Meta):
+        read_only_fields = ["id", "nom", "prenom", "departement", "metier"]

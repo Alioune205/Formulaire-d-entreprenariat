@@ -47,17 +47,21 @@ def lien_suivi(dossier):
     return f"{settings.FRONTEND_URL.rstrip('/')}/suivi?{params}"
 
 
-def _envoyer(destinataire, sujet, texte, gabarit, contexte):
-    """Envoie un e-mail multipart : texte brut + HTML, avec le logo intégré (cid:logo-ciat)."""
+def _construire(destinataire, sujet, texte, gabarit, contexte, connection=None):
+    """Construit un e-mail multipart : texte brut + HTML, avec le logo intégré (cid:logo-ciat)."""
     html = render_to_string(gabarit, {"sujet": sujet, **contexte})
-    msg = EmailMultiAlternatives(sujet, texte + SIGNATURE, None, [destinataire])
+    msg = EmailMultiAlternatives(sujet, texte + SIGNATURE, None, [destinataire], connection=connection)
     msg.attach_alternative(html, "text/html")
     msg.mixed_subtype = "related"  # le logo fait partie du message, ce n'est pas une pièce jointe
     logo = MIMEImage(_logo_octets(), "png")
     logo.add_header("Content-ID", "<logo-ciat>")
     logo.add_header("Content-Disposition", "inline", filename="logo-ciat.png")
     msg.attach(logo)
-    msg.send(fail_silently=False)
+    return msg
+
+
+def _envoyer(destinataire, sujet, texte, gabarit, contexte, connection=None):
+    _construire(destinataire, sujet, texte, gabarit, contexte, connection).send(fail_silently=False)
 
 
 def envoyer_confirmation(inscription):
@@ -123,3 +127,52 @@ def envoyer_alerte_regeneration(email, inscriptions):
         )
     except Exception:  # noqa: BLE001
         logger.exception("Échec de l'e-mail d'alerte de régénération pour %s", email)
+
+
+# --- E-mail de félicitations (projet accepté) ---------------------------------
+
+def chef_de_projet(inscription):
+    """Le premier membre saisi est le responsable du groupe."""
+    return inscription.membres.order_by("id").first()
+
+
+def _message_acceptation(inscription, connection=None):
+    chef = chef_de_projet(inscription)
+    salutation = f"Bonjour {chef.prenom} {chef.nom}," if chef else "Bonjour,"
+    lien = lien_suivi(inscription)
+    sujet = f"Félicitations ! « {inscription.nom_projet} » est accepté au Club d'Entrepreneuriat"
+    texte = (
+        f"{salutation}\n\n"
+        f"Excellente nouvelle : le projet « {inscription.nom_projet} » porté par le groupe "
+        f"« {inscription.nom_groupe} » a été retenu par le Club d'Entrepreneuriat du CIAT.\n\n"
+        "Prochaine étape : une réunion de bienvenue réunira tous les groupes retenus. "
+        "La date, l'heure et le lieu vous seront communiqués très prochainement par e-mail.\n\n"
+        "D'ici là, partagez la nouvelle avec les membres de votre groupe et préparez une "
+        "courte présentation de votre projet (2 minutes).\n\n"
+        f"Votre référence de dossier : {inscription.reference}\n{lien}"
+    )
+    contexte = {
+        "apercu": "Votre projet a été retenu. Une réunion de bienvenue vous attend.",
+        "surtitre": "Projet accepté",
+        "titre": "Félicitations, votre projet est retenu !",
+        "salutation": salutation,
+        "dossier": inscription,
+        "membres": list(inscription.membres.order_by("id")),
+        "lien_suivi": lien,
+    }
+    return _construire(inscription.email, sujet, texte, "emails/acceptation.html", contexte, connection)
+
+
+def envoyer_acceptation(inscription, connection=None):
+    """Envoie l'e-mail de félicitations. Lève une exception en cas d'échec (géré par l'appelant)."""
+    _message_acceptation(inscription, connection).send(fail_silently=False)
+
+
+def apercu_acceptation(inscription):
+    """HTML de l'e-mail pour l'aperçu du back-office (logo intégré en data URI)."""
+    import base64
+
+    msg = _message_acceptation(inscription)
+    html = msg.alternatives[0][0]
+    logo = "data:image/png;base64," + base64.b64encode(_logo_octets()).decode()
+    return {"sujet": msg.subject, "destinataire": inscription.email, "html": html.replace("cid:logo-ciat", logo)}

@@ -7,7 +7,8 @@ from django.core.cache import cache
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
-from .models import CodeVerification, Inscription
+from .genre import estimer_genre
+from .models import CodeVerification, Inscription, Membre
 
 PAYLOAD = {
     "nom_groupe": "Les Bâtisseurs",
@@ -226,3 +227,92 @@ class InscriptionTests(APITestCase):
         get_user_model().objects.create_user("etudiant", password="motdepasse-test")
         r = self.client.post("/api/admin/connexion/", {"username": "etudiant", "password": "motdepasse-test"})
         self.assertEqual(r.status_code, 401)
+
+
+class BackOfficeTests(APITestCase):
+    """Récapitulatif, genre estimé par le prénom, e-mails de félicitations."""
+
+    def setUp(self):
+        cache.clear()
+        get_user_model().objects.create_user("admin", password="motdepasse-test", is_staff=True)
+        token = self.client.post("/api/admin/connexion/", {"username": "admin", "password": "motdepasse-test"}).data["token"]
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {token}")
+
+    def _inscrire(self, nom, email, statut=None):
+        self.client.post("/api/inscriptions/", {**PAYLOAD, "nom_groupe": nom, "email": email}, format="json")
+        ins = Inscription.objects.get(nom_groupe=nom)
+        if statut:
+            ins.statut = statut
+            ins.save()
+        return ins
+
+    def test_estimation_genre(self):
+        self.assertEqual(estimer_genre("Pape Alioune"), "H")
+        self.assertEqual(estimer_genre("Ndèye Fatou"), "F")
+        self.assertEqual(estimer_genre("Mame Diarra"), "F")
+        self.assertEqual(estimer_genre("Mame Cheikh"), "H")
+        self.assertEqual(estimer_genre("Adama"), "")  # prénom mixte : à vérifier
+        self.assertEqual(estimer_genre("Xyzabc"), "")  # inconnu : à vérifier
+
+    def test_formulaire_public_ignore_le_genre(self):
+        membres = [{**m, "genre": "F"} for m in PAYLOAD["membres"]]
+        r = self.client.post("/api/inscriptions/", {**PAYLOAD, "membres": membres}, format="json")
+        self.assertEqual(r.status_code, 201)
+        self.assertFalse(Membre.objects.exclude(genre="").exists())
+
+    def test_recap_et_correction_du_genre(self):
+        ins = self._inscrire("G1", "g1@exemple.sn")  # Awa (F), Moussa (H), Fatou (F)
+        recap = self.client.get("/api/admin/inscriptions/recap/").data
+        self.assertEqual((recap["genre"]["filles"], recap["genre"]["garcons"]), (2, 1))
+        self.assertEqual(recap["groupes"], 1)
+        self.assertEqual(recap["groupes_mixtes"], 1)  # TIC + Automobile
+        tic = next(d for d in recap["departements"] if d["departement"] == "TIC")
+        self.assertEqual(tic["total"], 2)
+        apd = next(f for f in recap["filieres"] if f["filiere"] == "Analyse de Performance Digitale")
+        self.assertEqual(apd["total"], 0)  # les filières vides apparaissent aussi
+
+        # Un admin corrige Moussa -> Fille : la correction l'emporte sur l'estimation
+        moussa = ins.membres.get(prenom="Moussa")
+        r = self.client.patch(f"/api/admin/membres/{moussa.pk}/", {"genre": "F"}, format="json")
+        self.assertEqual(r.data["genre_effectif"], "F")
+        self.assertEqual(self.client.get("/api/admin/inscriptions/recap/").data["genre"]["filles"], 3)
+
+        # Filtre par statut
+        self.assertEqual(self.client.get("/api/admin/inscriptions/recap/?statut=ACCEPTE").data["groupes"], 0)
+
+    def test_email_acceptation_individuel_et_apercu(self):
+        ins = self._inscrire("G2", "g2@exemple.sn")
+        mail.outbox.clear()
+        r = self.client.post(f"/api/admin/inscriptions/{ins.pk}/envoyer-acceptation/")
+        self.assertEqual(r.status_code, 400)  # pas encore accepté
+        ins.statut = Inscription.Statut.ACCEPTE
+        ins.save()
+        apercu = self.client.get(f"/api/admin/inscriptions/{ins.pk}/apercu-acceptation/").data
+        self.assertIn("Félicitations", apercu["sujet"])
+        self.assertIn("Awa Diop", apercu["html"])  # personnalisé avec le chef de projet
+        self.assertNotIn("cid:logo-ciat", apercu["html"])
+        self.assertEqual(len(mail.outbox), 0)  # l'aperçu n'envoie rien
+        r = self.client.post(f"/api/admin/inscriptions/{ins.pk}/envoyer-acceptation/")
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertIsNotNone(r.data["acceptation_envoyee_le"])
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("réunion de bienvenue", mail.outbox[0].body)
+
+    def test_envoi_groupe_par_lots_sans_doublon(self):
+        for i in range(5):
+            self._inscrire(f"Groupe {i}", f"g{i}@exemple.sn", Inscription.Statut.ACCEPTE)
+        self._inscrire("En attente", "attente@exemple.sn")  # non accepté : exclu
+        mail.outbox.clear()
+        r = self.client.post("/api/admin/inscriptions/envoyer-acceptations/", {"limite": 3}, format="json")
+        self.assertEqual((len(r.data["envoyes"]), r.data["restants"]), (3, 2))
+        r = self.client.post("/api/admin/inscriptions/envoyer-acceptations/", {"limite": 3}, format="json")
+        self.assertEqual((len(r.data["envoyes"]), r.data["restants"]), (2, 0))
+        r = self.client.post("/api/admin/inscriptions/envoyer-acceptations/", {"limite": 3}, format="json")
+        self.assertEqual(len(r.data["envoyes"]), 0)  # relancer ne renvoie rien
+        self.assertEqual(len(mail.outbox), 5)
+        self.assertEqual(sorted(m.to[0] for m in mail.outbox), [f"g{i}@exemple.sn" for i in range(5)])
+
+    def test_routes_back_office_protegees(self):
+        self.client.credentials()
+        self.assertEqual(self.client.get("/api/admin/inscriptions/recap/").status_code, 401)
+        self.assertEqual(self.client.post("/api/admin/inscriptions/envoyer-acceptations/").status_code, 401)

@@ -17,9 +17,16 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle, SimpleRateThrottle
 from django.contrib.auth import authenticate
 
-from .emails import apres_reponse, envoyer_alerte_regeneration, envoyer_code, envoyer_confirmation
-from .models import CodeVerification, Inscription
-from .serializers import InscriptionAdminSerializer, InscriptionPubliqueSerializer
+from django.core.mail import get_connection
+
+from .emails import (
+    apercu_acceptation, apres_reponse, envoyer_acceptation, envoyer_alerte_regeneration, envoyer_code,
+    envoyer_confirmation,
+)
+from .models import CodeVerification, Inscription, Membre
+from .genre import genre_effectif
+from .recap import calculer_recap
+from .serializers import InscriptionAdminSerializer, InscriptionPubliqueSerializer, MembreGenreSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -286,7 +293,7 @@ class InscriptionAdminViewSet(
         w = csv.writer(response, delimiter=";")
         w.writerow([
             "Référence", "Nom du groupe", "Nom du projet", "E-mail", "Description", "Engagement",
-            "Statut", "Inscrit le", "Nom", "Prénom", "Département", "Filière",
+            "Statut", "Inscrit le", "Nom", "Prénom", "Genre", "Département", "Filière",
         ])
         for ins in self.get_queryset():
             base = [
@@ -295,5 +302,91 @@ class InscriptionAdminViewSet(
                 timezone.localtime(ins.cree_le).strftime("%d/%m/%Y %H:%M"),
             ]
             for m in ins.membres.all():
-                w.writerow(base + [m.nom, m.prenom, m.departement, m.metier])
+                w.writerow(base + [m.nom, m.prenom, {"F": "Fille", "H": "Garçon"}.get(genre_effectif(m), "À vérifier"),
+                                   m.departement, m.metier])
         return response
+
+    @action(detail=False, methods=["get"])
+    def recap(self, request):
+        """Récapitulatif : genre, départements, filières, tailles de groupes, e-mails d'acceptation."""
+        statut = request.query_params.get("statut") or None
+        if statut and statut not in Inscription.Statut.values:
+            return Response({"detail": "Statut inconnu."}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(calculer_recap(statut))
+
+    # --- E-mails de félicitations -------------------------------------------
+
+    @action(detail=True, methods=["get"], url_path="apercu-acceptation")
+    def apercu_acceptation(self, request, pk=None):
+        return Response(apercu_acceptation(self.get_object()))
+
+    @action(detail=True, methods=["post"], url_path="envoyer-acceptation")
+    def envoyer_acceptation(self, request, pk=None):
+        """Envoie (ou renvoie) l'e-mail de félicitations à un groupe accepté."""
+        ins = self.get_object()
+        if ins.statut != Inscription.Statut.ACCEPTE:
+            return Response({"detail": "Le dossier doit d'abord être au statut « Accepté »."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if not ins.email:
+            return Response({"detail": "Ce groupe n'a pas d'adresse e-mail."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            envoyer_acceptation(ins)
+        except Exception:  # noqa: BLE001
+            logger.exception("Échec de l'e-mail d'acceptation pour %s", ins.pk)
+            return Response({"detail": "L'e-mail n'a pas pu être envoyé. Réessayez plus tard."},
+                            status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        ins.acceptation_envoyee_le = timezone.now()
+        ins.save(update_fields=["acceptation_envoyee_le", "modifie_le"])
+        return Response(self.get_serializer(ins).data)
+
+    @action(detail=False, methods=["post"], url_path="envoyer-acceptations")
+    def envoyer_acceptations(self, request):
+        """Envoi groupé, PAR LOTS : le back-office rappelle cette route jusqu'à « restants = 0 ».
+
+        Seuls les groupes acceptés, avec e-mail, et pas encore notifiés sont concernés :
+        relancer l'envoi ne crée jamais de doublon.
+        """
+        try:
+            limite = max(1, min(int(request.data.get("limite", 10)), 20))
+        except (TypeError, ValueError):
+            limite = 10
+        a_envoyer = Inscription.objects.filter(
+            statut=Inscription.Statut.ACCEPTE, acceptation_envoyee_le=None
+        ).exclude(email="").order_by("cree_le")
+        lot = list(a_envoyer.prefetch_related("membres")[:limite])
+
+        envoyes, echecs = [], []
+        connexion = get_connection()  # une seule connexion Gmail pour tout le lot
+        try:
+            connexion.open()
+            for ins in lot:
+                try:
+                    envoyer_acceptation(ins, connexion)
+                except Exception as e:  # noqa: BLE001
+                    logger.exception("Échec de l'e-mail d'acceptation pour %s", ins.pk)
+                    echecs.append({"id": ins.pk, "nom_groupe": ins.nom_groupe, "erreur": type(e).__name__})
+                    continue
+                ins.acceptation_envoyee_le = timezone.now()
+                ins.save(update_fields=["acceptation_envoyee_le", "modifie_le"])
+                envoyes.append({"id": ins.pk, "nom_groupe": ins.nom_groupe, "email": ins.email})
+        except Exception:  # noqa: BLE001 — connexion impossible
+            logger.exception("Connexion au serveur d'e-mails impossible")
+            return Response({"detail": "Connexion au serveur d'e-mails impossible. Réessayez plus tard."},
+                            status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        finally:
+            connexion.close()
+
+        return Response({
+            "envoyes": envoyes,
+            "echecs": echecs,
+            "restants": a_envoyer.count(),
+            "sans_email": Inscription.objects.filter(statut=Inscription.Statut.ACCEPTE, email="").count(),
+        })
+
+
+class MembreAdminViewSet(mixins.UpdateModelMixin, viewsets.GenericViewSet):
+    """PATCH /api/admin/membres/<id>/ {genre} — compléter le genre d'un membre (staff uniquement)."""
+
+    queryset = Membre.objects.all()
+    serializer_class = MembreGenreSerializer
+    http_method_names = ["patch"]

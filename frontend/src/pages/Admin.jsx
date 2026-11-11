@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  AlertCircle, ChevronRight, Download, Loader2, Lock, LogOut, RefreshCw, Save, Search, Trash2, Users, X,
+  AlertCircle, BarChart3, ChevronRight, Download, Eye, List, Loader2, Lock, LogOut, Mail, RefreshCw, Save, Search,
+  Trash2, Users, X,
 } from 'lucide-react';
 import { api, ErreurApi, telechargerCsv, tokenAdmin } from '../lib/api.js';
+import Recap from '../components/admin/Recap.jsx';
+import { ApercuEmail } from '../components/admin/EnvoiFelicitations.jsx';
+
+const GENRES = { F: 'Fille', H: 'Garçon' };
 
 const STATUTS = {
   EN_ATTENTE: { libelle: 'En attente', classe: 'bg-amber-100 text-amber-800' },
@@ -78,12 +83,52 @@ function Fiche({ inscription, onFermer, onMaj, onSupprime }) {
   const [notes, setNotes] = useState(inscription.notes_admin);
   const [enregistrement, setEnregistrement] = useState(false);
   const [info, setInfo] = useState(null);
+  const [apercu, setApercu] = useState(null);
+  const [envoiMail, setEnvoiMail] = useState(false);
+  const [infoMail, setInfoMail] = useState(null);
 
   useEffect(() => {
     setStatut(inscription.statut);
     setNotes(inscription.notes_admin);
     setInfo(null);
   }, [inscription]);
+
+  // Correction du genre estimé à partir du prénom ("" = revenir à l'estimation)
+  const majGenre = async (membre, genre) => {
+    try {
+      const m = await api(`/admin/membres/${membre.id}/`, { method: 'PATCH', body: { genre }, auth: true });
+      onMaj({ ...inscription, membres: inscription.membres.map((x) => (x.id === m.id ? m : x)) });
+    } catch {
+      setInfo('Échec de la correction du genre.');
+    }
+  };
+
+  const voirApercu = async () => {
+    if (apercu) return setApercu(null);
+    try {
+      setApercu(await api(`/admin/inscriptions/${inscription.id}/apercu-acceptation/`, { auth: true }));
+    } catch {
+      setInfoMail('Impossible de charger l’aperçu.');
+    }
+  };
+
+  const envoyerFelicitations = async () => {
+    const deja = inscription.acceptation_envoyee_le;
+    const question = deja
+      ? `Cet e-mail a déjà été envoyé le ${formatDate(deja)}. Le renvoyer à ${inscription.email} ?`
+      : `Envoyer l’e-mail de félicitations à ${inscription.email} ?`;
+    if (!window.confirm(question)) return;
+    setEnvoiMail(true);
+    setInfoMail(null);
+    try {
+      onMaj(await api(`/admin/inscriptions/${inscription.id}/envoyer-acceptation/`, { method: 'POST', auth: true }));
+      setInfoMail('E-mail de félicitations envoyé.');
+    } catch (err) {
+      setInfoMail(err instanceof ErreurApi ? err.message : 'Échec de l’envoi.');
+    } finally {
+      setEnvoiMail(false);
+    }
+  };
 
   useEffect(() => {
     const echap = (e) => e.key === 'Escape' && onFermer();
@@ -147,7 +192,7 @@ function Fiche({ inscription, onFermer, onMaj, onSupprime }) {
             <div className="overflow-x-auto rounded-xl border border-brun-100">
               <table className="w-full text-left text-sm">
                 <thead className="bg-brun-50 text-xs uppercase text-brun-500">
-                  <tr><th className="px-3 py-2">Nom & prénom</th><th className="px-3 py-2">Département</th><th className="px-3 py-2">Métier</th></tr>
+                  <tr><th className="px-3 py-2">Nom & prénom</th><th className="px-3 py-2">Département</th><th className="px-3 py-2">Filière</th><th className="px-3 py-2">Genre</th></tr>
                 </thead>
                 <tbody className="divide-y divide-brun-100">
                   {inscription.membres.map((m) => (
@@ -155,6 +200,19 @@ function Fiche({ inscription, onFermer, onMaj, onSupprime }) {
                       <td className="px-3 py-2 font-medium text-brun-800">{m.prenom} {m.nom}</td>
                       <td className="px-3 py-2 text-brun-600">{m.departement}</td>
                       <td className="px-3 py-2 text-brun-600">{m.metier}</td>
+                      <td className="px-3 py-2">
+                        <select
+                          className={`rounded-lg border px-2 py-1 text-xs ${m.genre_effectif ? 'border-brun-200 text-brun-700' : 'border-amber-300 bg-amber-50 text-amber-800'}`}
+                          value={m.genre}
+                          onChange={(e) => majGenre(m, e.target.value)}
+                          aria-label={`Genre de ${m.prenom} ${m.nom}`}
+                          title="Estimé d’après le prénom ; choisissez pour corriger"
+                        >
+                          <option value="">{m.genre_estime ? `${GENRES[m.genre_estime]} (estimé)` : 'À vérifier'}</option>
+                          <option value="F">Fille</option>
+                          <option value="H">Garçon</option>
+                        </select>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -176,6 +234,30 @@ function Fiche({ inscription, onFermer, onMaj, onSupprime }) {
                 : <strong className="text-red-600">non</strong>}
             </p>
           </section>
+
+          {inscription.statut === 'ACCEPTE' && (
+            <section className="space-y-3 rounded-2xl border border-emerald-200 bg-emerald-50/40 p-5">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-800">E-mail de félicitations</h3>
+              <p className="text-sm text-brun-700">
+                {inscription.acceptation_envoyee_le
+                  ? <>Envoyé le <strong>{formatDate(inscription.acceptation_envoyee_le)}</strong> à {inscription.email}.</>
+                  : inscription.email ? 'Pas encore envoyé.' : 'Impossible : ce groupe n’a pas d’adresse e-mail.'}
+              </p>
+              {infoMail && <p className="text-sm font-medium text-brun-700">{infoMail}</p>}
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={voirApercu} className="btn-secondaire">
+                  <Eye className="h-4 w-4" /> {apercu ? 'Masquer l’aperçu' : 'Aperçu'}
+                </button>
+                {inscription.email && (
+                  <button type="button" onClick={envoyerFelicitations} disabled={envoiMail} className="btn-primaire">
+                    {envoiMail ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+                    {inscription.acceptation_envoyee_le ? 'Renvoyer' : 'Envoyer'}
+                  </button>
+                )}
+              </div>
+              <ApercuEmail apercu={apercu} />
+            </section>
+          )}
 
           <section className="space-y-4 rounded-2xl border border-brun-100 p-5">
             <h3 className="text-xs font-bold uppercase tracking-wider text-brun-500">Traitement</h3>
@@ -207,6 +289,7 @@ function Fiche({ inscription, onFermer, onMaj, onSupprime }) {
 
 /* ---------------- Tableau de bord ---------------- */
 function TableauDeBord({ onDeconnexion }) {
+  const [onglet, setOnglet] = useState('inscriptions');
   const [inscriptions, setInscriptions] = useState([]);
   const [stats, setStats] = useState(null);
   const [recherche, setRecherche] = useState('');
@@ -295,7 +378,29 @@ function TableauDeBord({ onDeconnexion }) {
       </header>
 
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-        <h1 className="text-2xl font-extrabold text-brun-800">Inscriptions au Club d'Entrepreneuriat</h1>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <h1 className="text-2xl font-extrabold text-brun-800">Club d'Entrepreneuriat — back-office</h1>
+          <div className="inline-flex rounded-xl border border-brun-100 bg-white p-1" role="tablist">
+            {[['inscriptions', 'Inscriptions', List], ['recap', 'Récapitulatif', BarChart3]].map(([id, libelle, Icone]) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={onglet === id}
+                onClick={() => setOnglet(id)}
+                className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                  onglet === id ? 'bg-brun-800 text-white' : 'text-brun-600 hover:bg-brun-50'
+                }`}
+              >
+                <Icone className="h-4 w-4" /> {libelle}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {onglet === 'recap' ? (
+          <div className="mt-6"><Recap onDeconnexion={onDeconnexion} /></div>
+        ) : (<>
 
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {KPIS.map(([libelle, valeur, couleur]) => (
@@ -382,6 +487,7 @@ function TableauDeBord({ onDeconnexion }) {
             </div>
           )}
         </div>
+        </>)}
       </main>
 
       {selection && (
