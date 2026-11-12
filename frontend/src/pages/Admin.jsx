@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  AlertCircle, BarChart3, ChevronRight, Download, Eye, List, Loader2, Lock, LogOut, Mail, RefreshCw, Save, Search,
+  AlertCircle, BarChart3, ChevronRight, ClipboardCheck, Download, Eye, List, Loader2, Lock, LogOut, Mail, RefreshCw, Save, Search,
   Trash2, Users, X,
 } from 'lucide-react';
 import { api, ErreurApi, telechargerCsv, tokenAdmin } from '../lib/api.js';
+import Entretiens from '../components/admin/Entretiens.jsx';
 import Recap from '../components/admin/Recap.jsx';
 import { ApercuEmail } from '../components/admin/EnvoiFelicitations.jsx';
 
@@ -381,7 +382,11 @@ function TableauDeBord({ onDeconnexion }) {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <h1 className="text-2xl font-extrabold text-brun-800">Club d'Entrepreneuriat — back-office</h1>
           <div className="inline-flex rounded-xl border border-brun-100 bg-white p-1" role="tablist">
-            {[['inscriptions', 'Inscriptions', List], ['recap', 'Récapitulatif', BarChart3]].map(([id, libelle, Icone]) => (
+            {[
+              ['inscriptions', 'Inscriptions', List],
+              ['entretiens', 'Entretiens', ClipboardCheck],
+              ['recap', 'Récapitulatif', BarChart3],
+            ].map(([id, libelle, Icone]) => (
               <button
                 key={id}
                 type="button"
@@ -400,6 +405,8 @@ function TableauDeBord({ onDeconnexion }) {
 
         {onglet === 'recap' ? (
           <div className="mt-6"><Recap onDeconnexion={onDeconnexion} /></div>
+        ) : onglet === 'entretiens' ? (
+          <div className="mt-6"><Entretiens onDeconnexion={onDeconnexion} onMajStats={charger} /></div>
         ) : (<>
 
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
