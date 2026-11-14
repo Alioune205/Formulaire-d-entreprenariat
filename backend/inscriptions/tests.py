@@ -296,8 +296,9 @@ class BackOfficeTests(APITestCase):
         self.assertEqual(r.status_code, 200, r.data)
         self.assertIsNotNone(r.data["acceptation_envoyee_le"])
         self.assertEqual(len(mail.outbox), 1)
-        self.assertIn("Mardi 17 novembre 2026", mail.outbox[0].body)
-        self.assertIn("réunion de bienvenue", mail.outbox[0].body)
+        self.assertIn("Mercredi 18 novembre 2026", mail.outbox[0].body)
+        self.assertIn("13h00", mail.outbox[0].body)
+        self.assertIn("Amphi", mail.outbox[0].body)
 
     def test_envoi_groupe_par_lots_sans_doublon(self):
         for i in range(5):
@@ -318,9 +319,10 @@ class BackOfficeTests(APITestCase):
         r = self.client.get("/api/admin/inscriptions/modele-acceptation/")
         self.assertEqual(r.status_code, 200)
         self.assertIn("Awa Diop", r.data["html"])
-        self.assertIn("Mardi 17 novembre 2026", r.data["html"])
+        self.assertIn("Mercredi 18 novembre 2026", r.data["html"])
+        self.assertIn("13h00", r.data["html"])
+        self.assertIn("Amphi", r.data["html"])
         self.assertIn("ISEP Amadou Trawaré", r.data["html"])
-        self.assertIn("réunion de bienvenue", r.data["html"].lower())
         self.assertEqual(len(mail.outbox), 0)
 
     def test_liste_membres_a_verifier(self):
