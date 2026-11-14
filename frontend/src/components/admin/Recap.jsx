@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { AlertCircle, Eye, Loader2, Mail, RefreshCw, UserCheck, X } from 'lucide-react';
+import { AlertCircle, FileEdit, Loader2, Mail, RefreshCw, UserCheck } from 'lucide-react';
 import { api, ErreurApi } from '../../lib/api.js';
-import EnvoiFelicitations, { ApercuEmail } from './EnvoiFelicitations.jsx';
+import EnvoiFelicitations from './EnvoiFelicitations.jsx';
+import EditeurModeleEmail from './EditeurModeleEmail.jsx';
 
 // Palette validée (contrastes + daltonisme) : scripts/validate_palette.js, mode clair.
 const COULEURS = { filles: '#b5651d', garcons: '#2f6fa3', non_renseigne: '#a8a29e' };

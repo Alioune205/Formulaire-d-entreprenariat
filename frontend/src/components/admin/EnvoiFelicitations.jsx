@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
-import { AlertCircle, CheckCircle2, Loader2, Mail, X } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { AlertCircle, CheckCircle2, FileEdit, Loader2, Mail, X } from 'lucide-react';
 import { api, ErreurApi } from '../../lib/api.js';
+import EditeurModeleEmail from './EditeurModeleEmail.jsx';
 
 /** Aperçu fidèle d'un e-mail (HTML rendu dans un cadre isolé). N'envoie rien. */
 export function ApercuEmail({ apercu }) {
@@ -26,20 +27,27 @@ export default function EnvoiFelicitations({ aEnvoyer, nonAcceptes = 0, onFermer
   const [envoyes, setEnvoyes] = useState([]);
   const [echecs, setEchecs] = useState([]);
   const [termine, setTermine] = useState(false);
+  const [editeurOuvert, setEditeurOuvert] = useState(false);
 
   // Aperçu sur le premier groupe concerné
-  useEffect(() => {
-    (async () => {
-      try {
-        const dossiers = await api('/admin/inscriptions/', { auth: true });
-        const premier = dossiers.find((i) => i.statut !== 'REJETE' && !i.acceptation_envoyee_le && i.email);
-        if (premier) setApercu(await api(`/admin/inscriptions/${premier.id}/apercu-acceptation/`, { auth: true }));
-      } catch (err) {
-        if (err instanceof ErreurApi && err.status === 401) onDeconnexion();
-        else setErreur('Impossible de charger l’aperçu.');
+  const chargerApercu = useCallback(async () => {
+    try {
+      const dossiers = await api('/admin/inscriptions/', { auth: true });
+      const premier = dossiers.find((i) => i.statut !== 'REJETE' && !i.acceptation_envoyee_le && i.email);
+      if (premier) {
+        setApercu(await api(`/admin/inscriptions/${premier.id}/apercu-acceptation/`, { auth: true }));
+      } else {
+        setApercu(await api('/admin/inscriptions/modele-acceptation/', { auth: true }));
       }
-    })();
+    } catch (err) {
+      if (err instanceof ErreurApi && err.status === 401) onDeconnexion();
+      else setErreur('Impossible de charger l’aperçu.');
+    }
   }, [onDeconnexion]);
+
+  useEffect(() => {
+    chargerApercu();
+  }, [chargerApercu]);
 
   const envoyer = async () => {
     setEnvoi(true);
@@ -95,10 +103,18 @@ export default function EnvoiFelicitations({ aEnvoyer, nonAcceptes = 0, onFermer
 
           {!termine && !envoi && envoyes.length === 0 && (
             <>
-              <p className="text-sm text-brun-600">
-                Aperçu de l’e-mail que recevra le premier groupe. Chaque e-mail est personnalisé avec le nom du chef de
-                projet, le groupe, le projet et les membres.
-              </p>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm text-brun-600">
+                  Aperçu de l’e-mail que recevra le premier groupe.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setEditeurOuvert(true)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-caramel-200 bg-caramel-50 px-2.5 py-1 text-xs font-semibold text-caramel-800 transition-colors hover:bg-caramel-100"
+                >
+                  <FileEdit className="h-3.5 w-3.5" /> Modifier le modèle / la rencontre
+                </button>
+              </div>
               {apercu ? <ApercuEmail apercu={apercu} /> : !erreur && <Loader2 className="mx-auto h-6 w-6 animate-spin text-brun-400" />}
               <label className="flex items-start gap-3 rounded-xl border border-brun-100 bg-brun-50 p-4 text-sm text-brun-700">
                 <input type="checkbox" className="mt-0.5 h-4 w-4" checked={confirme} onChange={(e) => setConfirme(e.target.checked)} />
@@ -153,6 +169,16 @@ export default function EnvoiFelicitations({ aEnvoyer, nonAcceptes = 0, onFermer
           )}
         </div>
       </div>
+
+      {editeurOuvert && (
+        <EditeurModeleEmail
+          onFermer={() => {
+            setEditeurOuvert(false);
+            chargerApercu();
+          }}
+          onDeconnexion={onDeconnexion}
+        />
+      )}
     </div>
   );
 }

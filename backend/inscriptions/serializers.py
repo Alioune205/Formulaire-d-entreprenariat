@@ -3,7 +3,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from .genre import estimer_genre, genre_effectif
-from .models import Inscription, Membre
+from .models import Inscription, Membre, ModeleEmail
 
 MIN_MEMBRES = 3
 MAX_MEMBRES = 6
@@ -148,3 +148,15 @@ class MembreGenreSerializer(MembreAdminSerializer):
 
     class Meta(MembreAdminSerializer.Meta):
         read_only_fields = ["id", "nom", "prenom", "departement", "metier", "nom_groupe"]
+
+
+class ModeleEmailSerializer(serializers.ModelSerializer):
+    """Back-office : consultation et personnalisation du modèle d'e-mail."""
+
+    class Meta:
+        model = ModeleEmail
+        fields = [
+            "id", "sujet", "introduction", "titre_rencontre",
+            "texte_rencontre", "date_rencontre", "lieu_rencontre", "consigne", "modifie_le",
+        ]
+        read_only_fields = ["id", "modifie_le"]

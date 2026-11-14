@@ -371,3 +371,40 @@ class BackOfficeTests(APITestCase):
         self.client.credentials()
         self.assertEqual(self.client.get("/api/admin/inscriptions/recap/").status_code, 401)
         self.assertEqual(self.client.post("/api/admin/inscriptions/envoyer-acceptations/").status_code, 401)
+        self.assertEqual(self.client.get("/api/admin/inscriptions/modele-email/").status_code, 401)
+
+    def test_personnalisation_modele_email(self):
+        # 1. Lecture du modèle existant
+        r = self.client.get("/api/admin/inscriptions/modele-email/")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("Mercredi 18 novembre 2026", r.data["date_rencontre"])
+
+        # 2. Modification directe
+        r = self.client.patch("/api/admin/inscriptions/modele-email/", {
+            "date_rencontre": "Vendredi 20 novembre 2026 à 15h00",
+            "lieu_rencontre": "Salle B12 (CIAT)",
+        }, format="json")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.data["date_rencontre"], "Vendredi 20 novembre 2026 à 15h00")
+
+        # 3. Aperçu en direct sans sauvegarder
+        apercu = self.client.post("/api/admin/inscriptions/modele-email/apercu/", {
+            "date_rencontre": "Jeudi 19 novembre 2026",
+            "lieu_rencontre": "Salle Informatique",
+        }, format="json")
+        self.assertEqual(apercu.status_code, 200)
+        self.assertIn("Jeudi 19 novembre 2026", apercu.data["html"])
+        self.assertIn("Salle Informatique", apercu.data["html"])
+
+        # 4. Envoi avec le modèle personnalisé sauvegardé
+        ins = self._inscrire("Groupe Custom", "custom@exemple.sn", Inscription.Statut.ACCEPTE)
+        mail.outbox.clear()
+        r = self.client.post(f"/api/admin/inscriptions/{ins.pk}/envoyer-acceptation/")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("Vendredi 20 novembre 2026 à 15h00", mail.outbox[0].body)
+        self.assertIn("Salle B12 (CIAT)", mail.outbox[0].body)
+
+        # 5. Réinitialisation aux valeurs par défaut
+        r = self.client.post("/api/admin/inscriptions/modele-email/reinitialiser/")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("Mercredi 18 novembre 2026", r.data["date_rencontre"])

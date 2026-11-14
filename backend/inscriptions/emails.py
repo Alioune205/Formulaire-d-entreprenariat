@@ -136,53 +136,106 @@ def chef_de_projet(inscription):
     return inscription.membres.order_by("id").first()
 
 
-def _message_acceptation(inscription, connection=None, membres=None):
-    membres = membres if membres is not None else list(inscription.membres.order_by("id"))
-    chef = membres[0] if membres else None
-    salutation = f"Bonjour {chef.prenom} {chef.nom}," if chef else "Bonjour,"
-    sujet = f"Félicitations — Votre projet « {inscription.nom_projet} » est retenu au Club d'Entrepreneuriat du CIAT"
-    texte = (
+def formater_texte(modele, salutation, inscription):
+    intro = (
+        (getattr(modele, "introduction", "") or "")
+        .replace("{nom_projet}", inscription.nom_projet)
+        .replace("{nom_groupe}", inscription.nom_groupe)
+    )
+    bloc_rencontre = []
+    if getattr(modele, "titre_rencontre", None):
+        bloc_rencontre.append(modele.titre_rencontre)
+    if getattr(modele, "texte_rencontre", None):
+        bloc_rencontre.append(modele.texte_rencontre)
+    if getattr(modele, "date_rencontre", None):
+        bloc_rencontre.append(f"Date : {modele.date_rencontre}")
+    if getattr(modele, "lieu_rencontre", None):
+        bloc_rencontre.append(f"Lieu : {modele.lieu_rencontre}")
+
+    texte_rencontre = "\n".join(bloc_rencontre)
+    if texte_rencontre:
+        texte_rencontre = f"\n\n{texte_rencontre}"
+
+    consigne = f"\n\n{modele.consigne}" if getattr(modele, "consigne", None) else ""
+
+    return (
         f"{salutation}\n\n"
-        f"Félicitations ! Nous avons le plaisir de vous informer que le projet « {inscription.nom_projet} », présenté par "
-        f"le groupe « {inscription.nom_groupe} », a été retenu pour intégrer le Club d'Entrepreneuriat du "
-        "CIAT de l'ISEP Amadou Trawaré pour l'année 2026-2027.\n\n"
-        "Rencontre avec l'équipe du CIAT\n"
-        "L'ensemble des groupes retenus est convié à une rencontre afin d'échanger avec l'équipe du CIAT "
-        "et de présenter le programme d'accompagnement.\n"
-        "Date : Mercredi 18 novembre 2026 à 13h00\n"
-        "Lieu : À l'Amphi (ISEP Amadou Trawaré)\n\n"
-        "Nous vous invitons à préparer une courte présentation de votre projet (deux minutes environ) "
-        "en vue de cette rencontre.\n\n"
+        f"{intro}"
+        f"{texte_rencontre}"
+        f"{consigne}\n\n"
         f"Référence du dossier : {inscription.reference}\n\n"
         "Nous vous adressons nos sincères félicitations.\n\nCordialement,"
     )
+
+
+def _message_acceptation(inscription, connection=None, membres=None, config=None):
+    from .models import ModeleEmail
+    if config is None:
+        config = ModeleEmail.obtenir()
+    elif isinstance(config, dict):
+        from types import SimpleNamespace
+        defaut = ModeleEmail.obtenir()
+        config = SimpleNamespace(
+            sujet=config.get("sujet", defaut.sujet),
+            introduction=config.get("introduction", defaut.introduction),
+            titre_rencontre=config.get("titre_rencontre", defaut.titre_rencontre),
+            texte_rencontre=config.get("texte_rencontre", defaut.texte_rencontre),
+            date_rencontre=config.get("date_rencontre", defaut.date_rencontre),
+            lieu_rencontre=config.get("lieu_rencontre", defaut.lieu_rencontre),
+            consigne=config.get("consigne", defaut.consigne),
+        )
+
+    membres = membres if membres is not None else list(inscription.membres.order_by("id"))
+    chef = membres[0] if membres else None
+    salutation = f"Bonjour {chef.prenom} {chef.nom}," if chef else "Bonjour,"
+
+    sujet = (
+        (getattr(config, "sujet", "") or "Félicitations — Votre projet est retenu")
+        .replace("{nom_projet}", inscription.nom_projet)
+        .replace("{nom_groupe}", inscription.nom_groupe)
+    )
+
+    intro = (
+        (getattr(config, "introduction", "") or "")
+        .replace("{nom_projet}", inscription.nom_projet)
+        .replace("{nom_groupe}", inscription.nom_groupe)
+    )
+
+    texte = formater_texte(config, salutation, inscription)
+
+    apercu_titre = getattr(config, "titre_rencontre", "") or "Rencontre"
+    apercu_date = getattr(config, "date_rencontre", "")
+    apercu_texte = f"{apercu_titre} : {apercu_date}" if apercu_date else apercu_titre
+
     contexte = {
-        "apercu": "Rencontre le mercredi 18 novembre à 13h à l'Amphi. Votre projet a été retenu.",
+        "apercu": f"{apercu_texte}. Votre projet a été retenu.",
         "surtitre": "Résultat de la sélection",
         "titre": "Félicitations, votre projet est retenu",
         "salutation": salutation,
         "dossier": inscription,
         "membres": membres,
+        "config": config,
+        "introduction": intro,
     }
     return _construire(inscription.email, sujet, texte, "emails/acceptation.html", contexte, connection)
 
 
-def envoyer_acceptation(inscription, connection=None):
+def envoyer_acceptation(inscription, connection=None, config=None):
     """Envoie l'e-mail de félicitations. Lève une exception en cas d'échec (géré par l'appelant)."""
-    _message_acceptation(inscription, connection).send(fail_silently=False)
+    _message_acceptation(inscription, connection=connection, config=config).send(fail_silently=False)
 
 
-def apercu_acceptation(inscription, membres=None):
+def apercu_acceptation(inscription, membres=None, config=None):
     """HTML de l'e-mail pour l'aperçu du back-office (logo intégré en data URI). N'envoie rien."""
     import base64
 
-    msg = _message_acceptation(inscription, membres=membres)
+    msg = _message_acceptation(inscription, membres=membres, config=config)
     html = msg.alternatives[0][0]
     logo = "data:image/png;base64," + base64.b64encode(_logo_octets()).decode()
     return {"sujet": msg.subject, "destinataire": inscription.email, "html": html.replace("cid:logo-ciat", logo)}
 
 
-def apercu_modele_acceptation():
+def apercu_modele_acceptation(config=None):
     """Aperçu du modèle avec un groupe fictif (aucune donnée réelle, aucun envoi)."""
     from types import SimpleNamespace as D
 
@@ -195,4 +248,4 @@ def apercu_modele_acceptation():
         D(prenom="Moussa", nom="Fall", metier="Technicien Supérieur en Électromécanique Automobile"),
         D(prenom="Fatou", nom="Ndiaye", metier="Analyse de Performance Digitale"),
     ]
-    return apercu_acceptation(exemple, membres=membres)
+    return apercu_acceptation(exemple, membres=membres, config=config)

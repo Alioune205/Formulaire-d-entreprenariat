@@ -23,10 +23,10 @@ from .emails import (
     apercu_acceptation, apercu_modele_acceptation, apres_reponse, envoyer_acceptation, envoyer_alerte_regeneration, envoyer_code,
     envoyer_confirmation,
 )
-from .models import CodeVerification, Inscription, Membre
+from .models import CodeVerification, Inscription, Membre, ModeleEmail
 from .genre import genre_effectif
 from .recap import calculer_recap
-from .serializers import InscriptionAdminSerializer, InscriptionPubliqueSerializer, MembreGenreSerializer
+from .serializers import InscriptionAdminSerializer, InscriptionPubliqueSerializer, MembreGenreSerializer, ModeleEmailSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -331,6 +331,29 @@ class InscriptionAdminViewSet(
     def modele_acceptation(self, request):
         """Le modèle de l'e-mail de félicitations, rempli avec un groupe fictif. N'envoie rien."""
         return Response(apercu_modele_acceptation())
+
+    @action(detail=False, methods=["get", "put", "patch"], url_path="modele-email")
+    def reglage_modele_email(self, request):
+        """Consulter ou mettre à jour le modèle d'e-mail personnalisable."""
+        modele = ModeleEmail.obtenir()
+        if request.method in ["PUT", "PATCH"]:
+            serializer = ModeleEmailSerializer(modele, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data)
+        return Response(ModeleEmailSerializer(modele).data)
+
+    @action(detail=False, methods=["post"], url_path="modele-email/reinitialiser")
+    def reinitialiser_modele_email(self, request):
+        """Remet à zéro tous les champs du modèle d'e-mail avec les textes par défaut."""
+        modele = ModeleEmail.obtenir()
+        modele.reinitialiser()
+        return Response(ModeleEmailSerializer(modele).data)
+
+    @action(detail=False, methods=["post"], url_path="modele-email/apercu")
+    def apercu_direct_modele_email(self, request):
+        """Génère un aperçu HTML immédiat avec les données saisies sans les sauvegarder."""
+        return Response(apercu_modele_acceptation(config=request.data))
 
     @action(detail=True, methods=["get"], url_path="apercu-acceptation")
     def apercu_acceptation(self, request, pk=None):

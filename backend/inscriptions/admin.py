@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Inscription, Membre
+from .models import Inscription, Membre, ModeleEmail
 
 
 class MembreInline(admin.TabularInline):
@@ -21,3 +21,8 @@ class InscriptionAdmin(admin.ModelAdmin):
     @admin.display(description="membres")
     def nb_membres(self, obj):
         return obj.membres.count()
+
+
+@admin.register(ModeleEmail)
+class ModeleEmailAdmin(admin.ModelAdmin):
+    list_display = ("sujet", "titre_rencontre", "date_rencontre", "lieu_rencontre", "modifie_le")

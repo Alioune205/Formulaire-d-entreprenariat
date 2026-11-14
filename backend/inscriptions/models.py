@@ -148,3 +148,70 @@ class CodeVerification(models.Model):
         self.tentatives += 1
         self.save(update_fields=["tentatives"])
         return False
+
+
+DEFAUT_SUJET = "Félicitations — Votre projet « {nom_projet} » est retenu au Club d'Entrepreneuriat du CIAT"
+DEFAUT_INTRO = (
+    "Félicitations ! Nous avons le plaisir de vous informer que le projet « {nom_projet} », présenté par "
+    "le groupe « {nom_groupe} », a été retenu pour intégrer le Club d'Entrepreneuriat du "
+    "Centre d'Innovation, d'Application et de Transfert (CIAT) de l'ISEP Amadou Trawaré pour l'année 2026-2027."
+)
+DEFAUT_TITRE_RENCONTRE = "Rencontre avec les groupes"
+DEFAUT_TEXTE_RENCONTRE = (
+    "L'ensemble des groupes retenus est convié à une rencontre afin d'échanger avec l'équipe du CIAT "
+    "et de présenter le programme d'accompagnement."
+)
+DEFAUT_DATE_RENCONTRE = "Mercredi 18 novembre 2026 à 13h00"
+DEFAUT_LIEU_RENCONTRE = "À l'Amphi (ISEP Amadou Trawaré)"
+DEFAUT_CONSIGNE = (
+    "Nous vous invitons à préparer une courte présentation de votre projet (deux minutes environ) "
+    "en vue de cette rencontre."
+)
+
+
+class ModeleEmail(models.Model):
+    """Modèle d'e-mail de félicitations / rencontre personnalisable depuis l'interface admin."""
+
+    sujet = models.CharField("objet de l'e-mail", max_length=250, default=DEFAUT_SUJET)
+    introduction = models.TextField("message d'introduction", default=DEFAUT_INTRO)
+    titre_rencontre = models.CharField("titre de la rencontre", max_length=150, blank=True, default=DEFAUT_TITRE_RENCONTRE)
+    texte_rencontre = models.TextField("description de la rencontre", blank=True, default=DEFAUT_TEXTE_RENCONTRE)
+    date_rencontre = models.CharField("date et heure", max_length=120, blank=True, default=DEFAUT_DATE_RENCONTRE)
+    lieu_rencontre = models.CharField("lieu", max_length=150, blank=True, default=DEFAUT_LIEU_RENCONTRE)
+    consigne = models.TextField("consigne de préparation", blank=True, default=DEFAUT_CONSIGNE)
+    modifie_le = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "modèle d'e-mail"
+        verbose_name_plural = "modèles d'e-mails"
+
+    def __str__(self):
+        return f"Modèle d'e-mail CIAT (mis à jour le {self.modifie_le})"
+
+    @classmethod
+    def obtenir(cls):
+        try:
+            obj, _ = cls.objects.get_or_create(id=1)
+            return obj
+        except Exception:
+            return cls(
+                id=1,
+                sujet=DEFAUT_SUJET,
+                introduction=DEFAUT_INTRO,
+                titre_rencontre=DEFAUT_TITRE_RENCONTRE,
+                texte_rencontre=DEFAUT_TEXTE_RENCONTRE,
+                date_rencontre=DEFAUT_DATE_RENCONTRE,
+                lieu_rencontre=DEFAUT_LIEU_RENCONTRE,
+                consigne=DEFAUT_CONSIGNE,
+            )
+
+    def reinitialiser(self):
+        self.sujet = DEFAUT_SUJET
+        self.introduction = DEFAUT_INTRO
+        self.titre_rencontre = DEFAUT_TITRE_RENCONTRE
+        self.texte_rencontre = DEFAUT_TEXTE_RENCONTRE
+        self.date_rencontre = DEFAUT_DATE_RENCONTRE
+        self.lieu_rencontre = DEFAUT_LIEU_RENCONTRE
+        self.consigne = DEFAUT_CONSIGNE
+        self.save()
+        return self

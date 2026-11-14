@@ -5,11 +5,7 @@
 </p>
 
 <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#5f3b28;">
-  <strong style="color:#331e14;">Félicitations !</strong> Nous avons le plaisir de vous informer que le projet
-  <strong style="color:#331e14;">{{ dossier.nom_projet }}</strong>, présenté par le groupe
-  <strong style="color:#331e14;">{{ dossier.nom_groupe }}</strong>, a été retenu pour intégrer le
-  Club d'Entrepreneuriat du Centre d'Innovation, d'Application et de Transfert (CIAT) de l'ISEP Amadou Trawaré
-  pour l'année 2026-2027.
+  {{ introduction|linebreaksbr }}
 </p>
 
 <p style="margin:0 0 26px;font-size:15px;line-height:1.7;color:#5f3b28;">
@@ -46,26 +42,34 @@
 </table>
 
 {# Annonce de la rencontre #}
+{% if config.titre_rencontre or config.texte_rencontre or config.date_rencontre or config.lieu_rencontre %}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 0;">
   <tr>
     <td style="border-left:4px solid #c08457;background-color:#faf6f3;padding:16px 20px;">
-      <p style="margin:0 0 6px;font-size:15px;font-weight:bold;color:#4a2c1e;">Rencontre avec les groupes</p>
+      {% if config.titre_rencontre %}
+      <p style="margin:0 0 6px;font-size:15px;font-weight:bold;color:#4a2c1e;">{{ config.titre_rencontre }}</p>
+      {% endif %}
+      {% if config.texte_rencontre %}
       <p style="margin:0 0 10px;font-size:14px;line-height:1.7;color:#5f3b28;">
-        L'ensemble des groupes retenus est convié à une rencontre afin d'échanger avec l'équipe du CIAT
-        et de présenter le programme d'accompagnement.
+        {{ config.texte_rencontre|linebreaksbr }}
       </p>
+      {% endif %}
+      {% if config.date_rencontre or config.lieu_rencontre %}
       <p style="margin:0;font-size:14px;line-height:1.7;color:#331e14;">
-        <strong>Date & heure :</strong> Mercredi 18 novembre 2026 à 13h00<br>
-        <strong>Lieu :</strong> À l'Amphi (ISEP Amadou Trawaré)
+        {% if config.date_rencontre %}<strong>Date & heure :</strong> {{ config.date_rencontre }}<br>{% endif %}
+        {% if config.lieu_rencontre %}<strong>Lieu :</strong> {{ config.lieu_rencontre }}{% endif %}
       </p>
+      {% endif %}
     </td>
   </tr>
 </table>
+{% endif %}
 
+{% if config.consigne %}
 <p style="margin:26px 0 0;font-size:15px;line-height:1.7;color:#5f3b28;">
-  Nous vous invitons à préparer une courte présentation de votre projet (deux minutes environ)
-  en vue de cette rencontre.
+  {{ config.consigne|linebreaksbr }}
 </p>
+{% endif %}
 
 <p style="margin:30px 0 0;font-size:15px;line-height:1.7;color:#5f3b28;">
   Nous vous adressons nos sincères félicitations et nous réjouissons de vous accompagner.
