@@ -174,36 +174,6 @@ function MembresAVerifier({ onCorrige, onDeconnexion }) {
   );
 }
 
-/** Fenêtre « Modèle de l'e-mail » : aperçu avec un groupe fictif, sans aucun envoi. */
-function ModeleEmail({ onFermer }) {
-  const [apercu, setApercu] = useState(null);
-  const [erreur, setErreur] = useState(null);
-  useEffect(() => {
-    api('/admin/inscriptions/modele-acceptation/', { auth: true })
-      .then(setApercu)
-      .catch(() => setErreur('Impossible de charger le modèle.'));
-  }, []);
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-brun-900/50 p-4" onClick={onFermer}>
-      <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
-        onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Modèle de l'e-mail de félicitations">
-        <div className="flex items-start justify-between gap-4 border-b border-brun-100 px-6 py-5">
-          <div>
-            <h2 className="text-lg font-extrabold text-brun-800">Modèle de l’e-mail de félicitations</h2>
-            <p className="text-sm text-brun-600">Exemple avec un groupe fictif. Chaque groupe recevra ses propres noms. Rien n’est envoyé.</p>
-          </div>
-          <button type="button" onClick={onFermer} className="rounded-lg p-2 text-brun-500 hover:bg-brun-50" aria-label="Fermer">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="overflow-y-auto p-6">
-          {erreur ? <p className="text-red-600">{erreur}</p> : apercu ? <ApercuEmail apercu={apercu} /> : <Loader2 className="mx-auto h-6 w-6 animate-spin text-brun-400" />}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function Recap({ onDeconnexion }) {
   const [statut, setStatut] = useState('');
   const [donnees, setDonnees] = useState(null);
@@ -372,7 +342,7 @@ export default function Recap({ onDeconnexion }) {
         action={(
           <div className="flex flex-wrap gap-2">
             <button type="button" className="btn-secondaire" onClick={() => setModeleOuvert(true)}>
-              <Eye className="h-4 w-4" /> Voir le modèle de l’e-mail
+              <FileEdit className="h-4 w-4" /> Personnaliser l’e-mail
             </button>
             <button type="button" className="btn-primaire" disabled={acc.eligibles === 0} onClick={() => setEnvoiOuvert(true)}>
               <Mail className="h-4 w-4" /> Envoyer les félicitations à tous les groupes ({acc.eligibles})
@@ -395,7 +365,12 @@ export default function Recap({ onDeconnexion }) {
         )}
       </Carte>
 
-      {modeleOuvert && <ModeleEmail onFermer={() => setModeleOuvert(false)} />}
+      {modeleOuvert && (
+        <EditeurModeleEmail
+          onFermer={() => setModeleOuvert(false)}
+          onDeconnexion={onDeconnexion}
+        />
+      )}
       {envoiOuvert && (
         <EnvoiFelicitations aEnvoyer={acc.eligibles} nonAcceptes={acc.non_acceptes} onFermer={() => { setEnvoiOuvert(false); charger(); }} onDeconnexion={onDeconnexion} />
       )}

@@ -12,7 +12,7 @@ export function ApercuEmail({ apercu }) {
         <p><span className="font-semibold text-brun-800">À :</span> {apercu.destinataire}</p>
         <p><span className="font-semibold text-brun-800">Objet :</span> {apercu.sujet}</p>
       </div>
-      <iframe title="Aperçu de l'e-mail" srcDoc={apercu.html} sandbox="" className="h-[520px] w-full bg-[#f2e9e2]" />
+      <iframe title="Aperçu de l'e-mail" srcDoc={apercu.html} sandbox="allow-same-origin" className="h-[520px] w-full bg-[#f2e9e2]" />
     </div>
   );
 }
