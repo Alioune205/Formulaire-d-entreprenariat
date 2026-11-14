@@ -82,7 +82,7 @@ export default function EnvoiFelicitations({ aEnvoyer, nonAcceptes = 0, onFermer
       >
         <div className="flex items-start justify-between gap-4 border-b border-brun-100 px-6 py-5">
           <div>
-            <h2 className="text-lg font-extrabold text-brun-800">Envoyer les e-mails de félicitations</h2>
+            <h2 className="text-lg font-extrabold text-brun-800">Envoyer les e-mails de convocation à l’entretien</h2>
             <p className="text-sm text-brun-500">
               {aEnvoyer} groupe{aEnvoyer > 1 ? 's' : ''} pas encore notifié{aEnvoyer > 1 ? 's' : ''} (dossiers rejetés exclus).
             </p>
@@ -120,7 +120,7 @@ export default function EnvoiFelicitations({ aEnvoyer, nonAcceptes = 0, onFermer
                 <input type="checkbox" className="mt-0.5 h-4 w-4" checked={confirme} onChange={(e) => setConfirme(e.target.checked)} />
                 <span>
                   J’ai vérifié l’aperçu et je confirme l’envoi à <strong>{aEnvoyer} chef{aEnvoyer > 1 ? 's' : ''} de projet</strong>.
-                  {nonAcceptes > 0 && <> Les {nonAcceptes} dossier(s) « En attente » ou « Entretien » passeront au statut « Accepté ».</>}
+                  {nonAcceptes > 0 && <> Les {nonAcceptes} dossier(s) « En attente » passeront au statut « Convoqué en entretien » (visibles dans l'onglet « Entretiens » pour la délibération du jury).</>}
                   {' '}Les groupes déjà notifiés ne recevront pas de second e-mail.
                 </span>
               </label>

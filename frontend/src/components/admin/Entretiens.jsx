@@ -18,8 +18,8 @@ const COLONNES = [
   {
     id: 'acceptes',
     filtre: 'ACCEPTE',
-    titre: 'Acceptés',
-    vide: 'Aucun groupe accepté pour le moment.',
+    titre: 'Admis au club (après entretien)',
+    vide: 'Aucun groupe admis pour le moment.',
     point: 'bg-emerald-600',
     entete: 'bg-emerald-50/80',
     badge: 'bg-white text-emerald-800 border border-emerald-200',
@@ -28,8 +28,8 @@ const COLONNES = [
   {
     id: 'rejetes',
     filtre: 'REJETE',
-    titre: 'Rejetés',
-    vide: 'Aucun groupe rejeté.',
+    titre: 'Non retenus',
+    vide: 'Aucun groupe non retenu.',
     point: 'bg-red-500',
     entete: 'bg-red-50/80',
     badge: 'bg-white text-red-700 border border-red-200',
@@ -84,12 +84,12 @@ function CarteGroupe({ ins, onClick }) {
         </div>
         {ins.statut === 'ENTRETIEN' && (
           <span className="shrink-0 rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-800">
-            En cours
+            {ins.acceptation_envoyee_le ? 'Convoqué' : 'En attente'}
           </span>
         )}
-        {ins.statut === 'ACCEPTE' && ins.acceptation_envoyee_le && (
+        {ins.statut === 'ACCEPTE' && (
           <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
-            Mail envoyé
+            Admis
           </span>
         )}
       </div>

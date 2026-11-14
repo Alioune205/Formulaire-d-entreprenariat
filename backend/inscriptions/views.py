@@ -361,10 +361,10 @@ class InscriptionAdminViewSet(
 
     @action(detail=True, methods=["post"], url_path="envoyer-acceptation")
     def envoyer_acceptation(self, request, pk=None):
-        """Envoie (ou renvoie) l'e-mail de félicitations à un groupe accepté."""
+        """Envoie (ou renvoie) l'e-mail de convocation / félicitations."""
         ins = self.get_object()
-        if ins.statut != Inscription.Statut.ACCEPTE:
-            return Response({"detail": "Le dossier doit d'abord être au statut « Accepté »."},
+        if ins.statut not in (Inscription.Statut.ENTRETIEN, Inscription.Statut.ACCEPTE):
+            return Response({"detail": "Le dossier doit d'abord être convoqué en entretien ou accepté."},
                             status=status.HTTP_400_BAD_REQUEST)
         if not ins.email:
             return Response({"detail": "Ce groupe n'a pas d'adresse e-mail."}, status=status.HTTP_400_BAD_REQUEST)
@@ -380,31 +380,30 @@ class InscriptionAdminViewSet(
 
     @action(detail=False, methods=["post"], url_path="reinitialiser-acceptations")
     def reinitialiser_acceptations(self, request):
-        """Remet à zéro `acceptation_envoyee_le` pour permettre un nouvel envoi groupé."""
-        nb = Inscription.objects.filter(acceptation_envoyee_le__isnull=False).update(
-            acceptation_envoyee_le=None, modifie_le=timezone.now()
+        """Remet à zéro `acceptation_envoyee_le` et replace les dossiers à « Convoqué en entretien » (À passer)."""
+        nb = Inscription.objects.exclude(statut=Inscription.Statut.REJETE).update(
+            statut=Inscription.Statut.ENTRETIEN,
+            acceptation_envoyee_le=None,
+            modifie_le=timezone.now(),
         )
         return Response({"reinitialises": nb})
 
     @action(detail=False, methods=["post"], url_path="envoyer-acceptations")
     def envoyer_acceptations(self, request):
-        """Envoi groupé, PAR LOTS : le back-office rappelle cette route jusqu'à « restants = 0 ».
-
-        Seuls les groupes acceptés, avec e-mail, et pas encore notifiés sont concernés :
-        relancer l'envoi ne crée jamais de doublon.
-        """
+        """Envoi groupé des convocations d'entretien par lots."""
         try:
             limite = max(1, min(int(request.data.get("limite", 10)), 20))
         except (TypeError, ValueError):
             limite = 10
         if request.data.get("accepter") in (True, "true", "1", 1):
-            # « Envoyer à tous les groupes » : les dossiers en attente / en entretien sont
-            # d'abord acceptés (les rejetés ne sont jamais concernés).
+            # « Convoquer tous les groupes » : les dossiers en attente passent à « Convoqué en entretien »
+            # (ils restent dans la colonne « À passer en entretien » pour la délibération du jury).
             Inscription.objects.filter(
-                statut__in=[Inscription.Statut.EN_ATTENTE, Inscription.Statut.ENTRETIEN]
-            ).update(statut=Inscription.Statut.ACCEPTE, modifie_le=timezone.now())
+                statut=Inscription.Statut.EN_ATTENTE
+            ).update(statut=Inscription.Statut.ENTRETIEN, modifie_le=timezone.now())
         a_envoyer = Inscription.objects.filter(
-            statut=Inscription.Statut.ACCEPTE, acceptation_envoyee_le=None
+            statut__in=[Inscription.Statut.ENTRETIEN, Inscription.Statut.ACCEPTE],
+            acceptation_envoyee_le=None,
         ).exclude(email="").order_by("cree_le")
         lot = list(a_envoyer.prefetch_related("membres")[:limite])
 

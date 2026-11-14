@@ -337,8 +337,8 @@ export default function Recap({ onDeconnexion }) {
       <MembresAVerifier onCorrige={charger} onDeconnexion={onDeconnexion} />
 
       <Carte
-        titre="E-mails de félicitations"
-        sousTitre="Envoyés aux chefs de projet de tous les groupes retenus (les dossiers rejetés sont exclus)"
+        titre="E-mails de convocation à l’entretien"
+        sousTitre="Envoyés aux chefs de projet de tous les groupes retenus pour l’entretien (les dossiers rejetés sont exclus)"
         action={(
           <div className="flex flex-wrap items-center gap-2">
             {acc.envoyes > 0 && (
@@ -346,7 +346,7 @@ export default function Recap({ onDeconnexion }) {
                 type="button"
                 className="btn-secondaire text-amber-700 hover:border-amber-300 hover:text-amber-800"
                 onClick={async () => {
-                  if (window.confirm(`Voulez-vous réinitialiser le statut d’envoi des ${acc.envoyes} groupes déjà marqués pour permettre un nouvel envoi ?`)) {
+                  if (window.confirm(`Voulez-vous réinitialiser les ${acc.envoyes} groupes pour les replacer dans « À passer en entretien » et autoriser un nouvel envoi ?`)) {
                     try {
                       await api('/admin/inscriptions/reinitialiser-acceptations/', { method: 'POST', auth: true });
                       await charger();
@@ -356,14 +356,14 @@ export default function Recap({ onDeconnexion }) {
                   }
                 }}
               >
-                <RotateCcw className="h-4 w-4" /> Réinitialiser les envois ({acc.envoyes})
+                <RotateCcw className="h-4 w-4" /> Replacer en « À passer » ({acc.envoyes})
               </button>
             )}
             <button type="button" className="btn-secondaire" onClick={() => setModeleOuvert(true)}>
               <FileEdit className="h-4 w-4" /> Personnaliser l’e-mail
             </button>
             <button type="button" className="btn-primaire" disabled={acc.eligibles === 0} onClick={() => setEnvoiOuvert(true)}>
-              <Mail className="h-4 w-4" /> Envoyer les félicitations à tous les groupes ({acc.eligibles})
+              <Mail className="h-4 w-4" /> Envoyer les convocations à tous les groupes ({acc.eligibles})
             </button>
           </div>
         )}
@@ -378,7 +378,7 @@ export default function Recap({ onDeconnexion }) {
         </dl>
         {acc.non_acceptes > 0 && (
           <p className="mt-3 text-sm text-brun-600">
-            Lors de l’envoi, les {acc.non_acceptes} dossier(s) encore « En attente » ou « Entretien » passeront automatiquement au statut « Accepté ».
+            Lors de l’envoi, les {acc.non_acceptes} dossier(s) encore « En attente » passeront au statut « Convoqué en entretien » (visibles dans l'onglet « Entretiens » pour l'évaluation du jury).
           </p>
         )}
       </Carte>
