@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { AlertCircle, FileEdit, Loader2, Mail, RefreshCw, UserCheck } from 'lucide-react';
+import { AlertCircle, FileEdit, Loader2, Mail, RefreshCw, RotateCcw, UserCheck } from 'lucide-react';
 import { api, ErreurApi } from '../../lib/api.js';
 import EnvoiFelicitations from './EnvoiFelicitations.jsx';
 import EditeurModeleEmail from './EditeurModeleEmail.jsx';
@@ -340,7 +340,25 @@ export default function Recap({ onDeconnexion }) {
         titre="E-mails de félicitations"
         sousTitre="Envoyés aux chefs de projet de tous les groupes retenus (les dossiers rejetés sont exclus)"
         action={(
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {acc.envoyes > 0 && (
+              <button
+                type="button"
+                className="btn-secondaire text-amber-700 hover:border-amber-300 hover:text-amber-800"
+                onClick={async () => {
+                  if (window.confirm(`Voulez-vous réinitialiser le statut d’envoi des ${acc.envoyes} groupes déjà marqués pour permettre un nouvel envoi ?`)) {
+                    try {
+                      await api('/admin/inscriptions/reinitialiser-acceptations/', { method: 'POST', auth: true });
+                      await charger();
+                    } catch {
+                      alert('Échec de la réinitialisation.');
+                    }
+                  }
+                }}
+              >
+                <RotateCcw className="h-4 w-4" /> Réinitialiser les envois ({acc.envoyes})
+              </button>
+            )}
             <button type="button" className="btn-secondaire" onClick={() => setModeleOuvert(true)}>
               <FileEdit className="h-4 w-4" /> Personnaliser l’e-mail
             </button>

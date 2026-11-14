@@ -373,6 +373,16 @@ class BackOfficeTests(APITestCase):
         self.assertEqual(self.client.post("/api/admin/inscriptions/envoyer-acceptations/").status_code, 401)
         self.assertEqual(self.client.get("/api/admin/inscriptions/modele-email/").status_code, 401)
 
+    def test_reinitialiser_acceptations(self):
+        ins = self._inscrire("Groupe Reinit", "reinit@exemple.sn", Inscription.Statut.ACCEPTE)
+        ins.acceptation_envoyee_le = timezone.now()
+        ins.save()
+        self.assertEqual(Inscription.objects.filter(acceptation_envoyee_le__isnull=False).count(), 1)
+        r = self.client.post("/api/admin/inscriptions/reinitialiser-acceptations/")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.data["reinitialises"], 1)
+        self.assertEqual(Inscription.objects.filter(acceptation_envoyee_le__isnull=False).count(), 0)
+
     def test_personnalisation_modele_email(self):
         # 1. Lecture du modèle existant
         r = self.client.get("/api/admin/inscriptions/modele-email/")

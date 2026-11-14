@@ -179,11 +179,11 @@ EMAIL_PORT = int(_env("EMAIL_PORT", "587"))
 EMAIL_USE_TLS = _env("EMAIL_USE_TLS", "1") == "1"
 EMAIL_HOST_USER = _env("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = _env("EMAIL_HOST_PASSWORD", "").replace(" ", "")
-# Envoi SMTP réel dès qu'un mot de passe d'application est fourni ; sinon, affichage dans le terminal.
+# Envoi SMTP réel en production ou dès qu'un mot de passe est fourni ; terminal uniquement en dev local sans credentials.
 EMAIL_BACKEND = _env(
     "EMAIL_BACKEND",
     "django.core.mail.backends.smtp.EmailBackend"
-    if EMAIL_HOST_USER and EMAIL_HOST_PASSWORD
+    if not DEBUG or (EMAIL_HOST_USER and EMAIL_HOST_PASSWORD)
     else "django.core.mail.backends.console.EmailBackend",
 )
 EMAIL_TIMEOUT = 10  # ne pas bloquer une requête trop longtemps si Gmail est lent

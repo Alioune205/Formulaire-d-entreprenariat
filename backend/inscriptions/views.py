@@ -378,6 +378,14 @@ class InscriptionAdminViewSet(
         ins.save(update_fields=["acceptation_envoyee_le", "modifie_le"])
         return Response(self.get_serializer(ins).data)
 
+    @action(detail=False, methods=["post"], url_path="reinitialiser-acceptations")
+    def reinitialiser_acceptations(self, request):
+        """Remet à zéro `acceptation_envoyee_le` pour permettre un nouvel envoi groupé."""
+        nb = Inscription.objects.filter(acceptation_envoyee_le__isnull=False).update(
+            acceptation_envoyee_le=None, modifie_le=timezone.now()
+        )
+        return Response({"reinitialises": nb})
+
     @action(detail=False, methods=["post"], url_path="envoyer-acceptations")
     def envoyer_acceptations(self, request):
         """Envoi groupé, PAR LOTS : le back-office rappelle cette route jusqu'à « restants = 0 ».
