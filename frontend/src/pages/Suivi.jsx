@@ -99,7 +99,7 @@ export default function Suivi() {
           </p>
 
           <div className="mt-6 rounded-2xl border border-caramel-300 bg-caramel-50/80 p-4 text-sm text-brun-800 shadow-sm">
-            <p className="font-bold text-caramel-900">📢 Rencontre de sélection — Mercredi 18 novembre à 13h00</p>
+            <p className="font-bold text-caramel-900">Rencontre de sélection — Mercredi 18 novembre à 13h00</p>
             <p className="mt-1 text-brun-700">
               Rendez-vous à l'<strong>Amphithéâtre ISEP Amadou Traoré</strong>. Si vous n'avez pas reçu d'e-mail de convocation suite à une boîte saturée,{' '}
               <a href="/#rencontre" className="font-bold text-caramel-800 underline hover:text-caramel-900">

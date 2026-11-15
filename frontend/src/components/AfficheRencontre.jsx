@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Calendar, Clock, Download, ExternalLink, Mail, MapPin, Maximize2, ShieldCheck, Sparkles, X } from 'lucide-react';
+import { Calendar, Clock, Download, ExternalLink, Mail, MapPin, Maximize2, ShieldCheck, X } from 'lucide-react';
 
 const MAILTO_HREF = "mailto:senepapealioune0@gmail.com?subject=Confirmation%20Presence%20Club%20Entrepreneuriat&body=Nom%20du%20Groupe%20%3A%0ANom%20du%20Projet%20%3A%0ANoms%20des%20Membres%20presents%20%3A";
 
@@ -15,7 +15,7 @@ export default function AfficheRencontre() {
         {/* En-tête de section */}
         <div className="mx-auto max-w-3xl text-center">
           <span className="inline-flex items-center gap-2 rounded-full border border-caramel-300 bg-caramel-50 px-4 py-1.5 text-xs font-extrabold uppercase tracking-widest text-caramel-800 shadow-sm">
-            <Sparkles className="h-4 w-4 text-caramel-600" /> Communiqué officiel · Candidats inscrits
+            <span className="h-2 w-2 rounded-full bg-caramel-500" /> Communiqué officiel · Candidats inscrits
           </span>
           <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-brun-800 sm:text-4xl lg:text-5xl">
             Confirmation de présence à la rencontre
