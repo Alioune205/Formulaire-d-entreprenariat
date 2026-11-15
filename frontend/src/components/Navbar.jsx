@@ -9,6 +9,9 @@ export default function Navbar() {
           <img src="/logo-ciat.png" alt="CIAT — ISEP Amadou Trawaré" className="h-9 w-auto sm:h-10" />
         </Link>
         <nav className="flex items-center gap-1 text-sm font-semibold sm:gap-2">
+          <a href="/#rencontre" className="rounded-lg px-2.5 py-1.5 text-xs sm:text-sm font-bold text-caramel-700 bg-caramel-50 border border-caramel-200/80 hover:bg-caramel-100 transition">
+            📢 Rencontre 18 Nov.
+          </a>
           <a href="/#club" className="hidden rounded-lg px-3 py-2 text-brun-700 hover:bg-brun-50 md:block">Le club</a>
           <NavLink
             to="/suivi"

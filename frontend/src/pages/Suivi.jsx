@@ -98,6 +98,16 @@ export default function Suivi() {
             Saisissez la référence reçue après l’inscription (ex. <span className="font-mono">CIAT-2026-7KQ4MZ</span>) et le nom exact de votre groupe.
           </p>
 
+          <div className="mt-6 rounded-2xl border border-caramel-300 bg-caramel-50/80 p-4 text-sm text-brun-800 shadow-sm">
+            <p className="font-bold text-caramel-900">📢 Rencontre de sélection — Mercredi 18 novembre à 13h00</p>
+            <p className="mt-1 text-brun-700">
+              Rendez-vous à l'<strong>Amphithéâtre ISEP Amadou Traoré</strong>. Si vous n'avez pas reçu d'e-mail de convocation suite à une boîte saturée,{' '}
+              <a href="/#rencontre" className="font-bold text-caramel-800 underline hover:text-caramel-900">
+                consultez l’affiche officielle et confirmez votre présence ici
+              </a>.
+            </p>
+          </div>
+
           <form onSubmit={rechercher} className="mt-8 grid gap-4 rounded-2xl border border-brun-100 bg-white p-6 shadow-sm sm:grid-cols-[1fr_1fr_auto] sm:items-end">
             <div>
               <label htmlFor="ref" className="label">Référence</label>

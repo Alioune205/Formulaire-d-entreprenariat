@@ -1,5 +1,6 @@
 import Navbar from '../components/Navbar.jsx';
 import Hero from '../components/Hero.jsx';
+import AfficheRencontre from '../components/AfficheRencontre.jsx';
 import Annonce from '../components/Annonce.jsx';
 import AboutClub from '../components/AboutClub.jsx';
 import FormulaireInscription from '../components/FormulaireInscription.jsx';
@@ -13,6 +14,7 @@ export default function Accueil() {
       <Navbar />
       <main>
         <Hero temps={temps} />
+        <AfficheRencontre />
         <Annonce temps={temps} />
         <AboutClub />
         <FormulaireInscription temps={temps} />
