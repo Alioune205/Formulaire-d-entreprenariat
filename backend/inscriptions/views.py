@@ -11,22 +11,28 @@ from django.db.models import Count, Q
 from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework import generics, mixins, permissions, status, viewsets
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import action, api_view, permission_classes, throttle_classes
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle, SimpleRateThrottle
 from django.contrib.auth import authenticate
 
-from django.core.mail import get_connection
+from django.core.mail import get_connection, send_mail
 
 from .emails import (
     apercu_acceptation, apercu_modele_acceptation, apres_reponse, envoyer_acceptation, envoyer_alerte_regeneration, envoyer_code,
     envoyer_confirmation,
 )
-from .models import CodeVerification, Inscription, Membre, ModeleEmail
+from .models import CandidaturePoste, CodeVerification, Inscription, Membre, ModeleEmail
 from .genre import genre_effectif
+from .postes import POSTES_CATALOGUE
 from .recap import calculer_recap
-from .serializers import InscriptionAdminSerializer, InscriptionPubliqueSerializer, MembreGenreSerializer, ModeleEmailSerializer
+from .serializers import (
+    CandidaturePosteAdminSerializer, CandidaturePostePublicSerializer,
+    InscriptionAdminSerializer, InscriptionPubliqueSerializer,
+    MembreGenreSerializer, ModeleEmailSerializer,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -454,3 +460,137 @@ class MembreAdminViewSet(mixins.ListModelMixin, mixins.UpdateModelMixin, viewset
         if request.query_params.get("a_verifier"):
             membres = [m for m in membres if not genre_effectif(m)]
         return Response(self.get_serializer(membres, many=True).data)
+
+
+# --- Candidatures à la gouvernance et aux chefs de cellules ---
+
+@api_view(["GET"])
+@permission_classes([permissions.AllowAny])
+def liste_postes_disponibles(request):
+    """GET /api/candidatures/postes/ — liste officielle des postes et leurs descriptifs."""
+    # Nombre de candidatures validées par poste
+    nb_valides = {
+        item["poste"]: item["total"]
+        for item in CandidaturePoste.objects.filter(statut=CandidaturePoste.Statut.VALIDE)
+                                           .values("poste")
+                                           .annotate(total=Count("id"))
+    }
+    nb_total = {
+        item["poste"]: item["total"]
+        for item in CandidaturePoste.objects.values("poste").annotate(total=Count("id"))
+    }
+    
+    catalogue = []
+    for p in POSTES_CATALOGUE:
+        code = p["code"]
+        catalogue.append({
+            **p,
+            "candidats_valides": nb_valides.get(code, 0),
+            "total_candidats": nb_total.get(code, 0),
+        })
+    return Response(catalogue)
+
+
+class CandidaturePostePubliqueView(generics.CreateAPIView):
+    """POST /api/candidatures/ — déposer une candidature avec photo obligatoire et vidéo."""
+
+    permission_classes = [permissions.AllowAny]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    serializer_class = CandidaturePostePublicSerializer
+
+    def perform_create(self, serializer):
+        candidature = serializer.save()
+        # Accusé de réception e-mail
+        try:
+            sujet = f"Accusé de réception — Candidature au poste de {candidature.get_poste_display()} (Club d'Entrepreneuriat CIAT)"
+            message = (
+                f"Bonjour {candidature.prenom} {candidature.nom},\n\n"
+                f"Nous accusons bonne réception de votre candidature pour le poste de « {candidature.get_poste_display()} » "
+                f"au sein du Club d'Entrepreneuriat du CIAT (ISEP Amadou Traoré).\n\n"
+                f"Votre dossier sera examiné par la commission électorale avant l'ouverture du scrutin en ligne ce samedi.\n\n"
+                f"Récapitulatif de votre candidature :\n"
+                f"• Poste : {candidature.get_poste_display()}\n"
+                f"• Département : {candidature.departement}\n"
+                f"• Filière : {candidature.metier}\n"
+                f"• Téléphone : {candidature.telephone}\n\n"
+                f"Cordialement,\n"
+                f"La Commission Électorale — Club d'Entrepreneuriat CIAT\n"
+                f"ISEP Amadou Traoré"
+            )
+            send_mail(sujet, message, settings.DEFAULT_FROM_EMAIL, [candidature.email], fail_silently=True)
+        except Exception as e:
+            logger.warning("Erreur lors de l'envoi de l'accusé de candidature à %s : %s", candidature.email, e)
+
+
+class CandidaturePosteAdminViewSet(viewsets.ModelViewSet):
+    """/api/admin/candidatures/ — gestion back-office des candidatures aux postes."""
+
+    permission_classes = [permissions.IsAdminUser]
+    serializer_class = CandidaturePosteAdminSerializer
+    queryset = CandidaturePoste.objects.all()
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        poste = self.request.query_params.get("poste")
+        if poste:
+            qs = qs.filter(poste=poste)
+        statut = self.request.query_params.get("statut")
+        if statut:
+            qs = qs.filter(statut=statut)
+        q = self.request.query_params.get("q")
+        if q:
+            qs = qs.filter(
+                Q(nom__icontains=q)
+                | Q(prenom__icontains=q)
+                | Q(email__icontains=q)
+                | Q(telephone__icontains=q)
+                | Q(profession_de_foi__icontains=q)
+            )
+        return qs
+
+    @action(detail=True, methods=["post"], url_path="changer-statut")
+    def changer_statut(self, request, pk=None):
+        candidature = self.get_object()
+        nouveau_statut = request.data.get("statut")
+        if nouveau_statut not in dict(CandidaturePoste.Statut.choices):
+            return Response({"detail": "Statut invalide."}, status=status.HTTP_400_BAD_REQUEST)
+        candidature.statut = nouveau_statut
+        if "notes_admin" in request.data:
+            candidature.notes_admin = request.data["notes_admin"]
+        candidature.save(update_fields=["statut", "notes_admin", "modifie_le"])
+        return Response(self.get_serializer(candidature).data)
+
+    @action(detail=False, methods=["get"], url_path="stats")
+    def stats(self, request):
+        tous = CandidaturePoste.objects.all()
+        par_statut = {s.value: tous.filter(statut=s.value).count() for s in CandidaturePoste.Statut}
+        par_poste = {
+            item["poste"]: item["total"]
+            for item in tous.values("poste").annotate(total=Count("id"))
+        }
+        return Response({
+            "total": tous.count(),
+            "par_statut": par_statut,
+            "par_poste": par_poste,
+        })
+
+    @action(detail=False, methods=["get"], url_path="export-csv")
+    def export_csv(self, request):
+        response = HttpResponse(content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = 'attachment; filename="candidatures_gouvernance_ciat.csv"'
+        response.write("\ufeff")  # BOM Excel
+        writer = csv.writer(response, delimiter=";")
+        writer.writerow([
+            "ID", "Poste", "Nom", "Prénom", "E-mail", "Téléphone",
+            "Département", "Métier / Filière", "Niveau", "Groupe/Projet",
+            "Statut", "Lien vidéo", "Date candidature",
+        ])
+        for c in self.get_queryset():
+            writer.writerow([
+                c.id, c.get_poste_display(), c.nom, c.prenom, c.email, c.telephone,
+                c.departement, c.metier, c.niveau, c.nom_projet,
+                c.get_statut_display(), c.lien_video or (request.build_absolute_uri(c.fichier_video.url) if c.fichier_video else ""),
+                timezone.localtime(c.cree_le).strftime("%d/%m/%Y %H:%M"),
+            ])
+        return response
+

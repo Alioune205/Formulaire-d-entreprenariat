@@ -9,6 +9,16 @@ export default function Navbar() {
           <img src="/logo-ciat.png" alt="CIAT — ISEP Amadou Trawaré" className="h-9 w-auto sm:h-10" />
         </Link>
         <nav className="flex items-center gap-1 text-sm font-semibold sm:gap-2">
+          <NavLink
+            to="/elections"
+            className={({ isActive }) =>
+              `rounded-lg px-2.5 py-1.5 text-xs sm:text-sm font-bold transition ${
+                isActive ? 'bg-caramel-500 text-white' : 'bg-caramel-100/70 text-caramel-800 hover:bg-caramel-200'
+              }`
+            }
+          >
+            Élections & Postes
+          </NavLink>
           <a href="/#rencontre" className="rounded-lg px-2.5 py-1.5 text-xs sm:text-sm font-bold text-caramel-700 bg-caramel-50 border border-caramel-200/80 hover:bg-caramel-100 transition">
             Rencontre 18 Nov.
           </a>

@@ -4,6 +4,7 @@ from datetime import timedelta
 from django.contrib.auth import get_user_model
 from django.core import mail
 from django.core.cache import cache
+from django.test import override_settings
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
@@ -26,6 +27,7 @@ PAYLOAD = {
 }
 
 
+@override_settings(DATE_LIMITE_INSCRIPTION="2099-12-31T23:59:59")
 class InscriptionTests(APITestCase):
     def setUp(self):
         cache.clear()  # remet à zéro les limites de requêtes entre les tests
@@ -229,6 +231,7 @@ class InscriptionTests(APITestCase):
         self.assertEqual(r.status_code, 401)
 
 
+@override_settings(DATE_LIMITE_INSCRIPTION="2099-12-31T23:59:59")
 class BackOfficeTests(APITestCase):
     """Récapitulatif, genre estimé par le prénom, e-mails de félicitations."""
 
@@ -418,3 +421,124 @@ class BackOfficeTests(APITestCase):
         r = self.client.post("/api/admin/inscriptions/modele-email/reinitialiser/")
         self.assertEqual(r.status_code, 200)
         self.assertIn("Mercredi 18 novembre 2026", r.data["date_rencontre"])
+
+
+class CandidaturePosteTests(APITestCase):
+    def setUp(self):
+        cache.clear()
+        self.admin = get_user_model().objects.create_superuser("admin_elections", "admin@ciat.sn", "secret123")
+        r = self.client.post("/api/admin/connexion/", {"username": "admin_elections", "password": "secret123"}, format="json")
+        self.token = r.data["token"]
+        self.auth_headers = {"HTTP_AUTHORIZATION": f"Token {self.token}"}
+
+    def _creer_image(self):
+        import io
+        from PIL import Image
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        f = io.BytesIO()
+        im = Image.new("RGB", (100, 100), color="blue")
+        im.save(f, "jpeg")
+        f.seek(0)
+        return SimpleUploadedFile("photo.jpg", f.read(), content_type="image/jpeg")
+
+    def test_liste_postes_disponibles(self):
+        r = self.client.get("/api/candidatures/postes/")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(len(r.data), 13)
+        codes = [p["code"] for p in r.data]
+        self.assertIn("PRESIDENT", codes)
+        self.assertIn("CHEF_CELLULE_TIC", codes)
+        self.assertIn("CHEF_CELLULE_AUTOMOBILE", codes)
+        self.assertIn("CHEF_CELLULE_FEMMES", codes)
+
+    def test_candidature_sans_photo_echoue(self):
+        payload = {
+            "poste": "PRESIDENT",
+            "nom": "Sall",
+            "prenom": "Mamadou",
+            "email": "mamadou.sall@isep.sn",
+            "telephone": "771234567",
+            "departement": "TIC",
+            "metier": "Développement Backend",
+            "profession_de_foi": "Je souhaite porter la vision du club pour dynamiser les projets étudiants.",
+        }
+        r = self.client.post("/api/candidatures/", payload, format="multipart")
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("photo", r.data)
+
+    def test_candidature_valide_avec_photo(self):
+        payload = {
+            "poste": "PRESIDENT",
+            "nom": "Sall",
+            "prenom": "Mamadou",
+            "email": "mamadou.sall@isep.sn",
+            "telephone": "771234567",
+            "departement": "TIC",
+            "metier": "Développement Backend",
+            "profession_de_foi": "Je souhaite porter la vision du club pour dynamiser les projets étudiants.",
+            "photo": self._creer_image(),
+            "lien_video": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        }
+        r = self.client.post("/api/candidatures/", payload, format="multipart")
+        self.assertEqual(r.status_code, 201, r.data)
+        from .models import CandidaturePoste
+        c = CandidaturePoste.objects.get(email="mamadou.sall@isep.sn")
+        self.assertEqual(c.poste, "PRESIDENT")
+        self.assertEqual(c.statut, CandidaturePoste.Statut.EN_ATTENTE)
+
+    def test_email_unique_par_candidat(self):
+        payload = {
+            "poste": "PRESIDENT",
+            "nom": "Sall",
+            "prenom": "Mamadou",
+            "email": "mamadou.sall@isep.sn",
+            "telephone": "771234567",
+            "departement": "TIC",
+            "metier": "Développement Backend",
+            "profession_de_foi": "Je souhaite porter la vision du club pour dynamiser les projets étudiants.",
+            "photo": self._creer_image(),
+        }
+        r1 = self.client.post("/api/candidatures/", payload, format="multipart")
+        self.assertEqual(r1.status_code, 201)
+
+        # Deuxième tentative avec le même e-mail pour un autre poste
+        payload2 = {
+            **payload,
+            "poste": "VICE_PRESIDENT",
+            "photo": self._creer_image(),
+        }
+        r2 = self.client.post("/api/candidatures/", payload2, format="multipart")
+        self.assertEqual(r2.status_code, 400)
+        self.assertIn("email", r2.data)
+
+    def test_backoffice_changer_statut_candidature(self):
+        from .models import CandidaturePoste
+        c = CandidaturePoste.objects.create(
+            poste="CHEF_CELLULE_TIC",
+            nom="Diop",
+            prenom="Awa",
+            email="awa.diop@isep.sn",
+            telephone="781234567",
+            departement="TIC",
+            metier="Développement Frontend",
+            profession_de_foi="Dynamiser les hackathons et l'IoT au sein de la cellule.",
+            photo=self._creer_image(),
+        )
+
+        # Consultation en admin
+        r = self.client.get("/api/admin/candidatures/", **self.auth_headers)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(len(r.data), 1)
+
+        # Validation de la candidature pour le vote
+        r_valide = self.client.post(
+            f"/api/admin/candidatures/{c.id}/changer-statut/",
+            {"statut": "VALIDE", "notes_admin": "Dossier complet, excellente vidéo."},
+            format="json",
+            **self.auth_headers,
+        )
+        self.assertEqual(r_valide.status_code, 200)
+        c.refresh_from_db()
+        self.assertEqual(c.statut, "VALIDE")
+        self.assertEqual(c.notes_admin, "Dossier complet, excellente vidéo.")
+

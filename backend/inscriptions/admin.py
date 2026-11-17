@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Inscription, Membre, ModeleEmail
+from .models import CandidaturePoste, Inscription, Membre, ModeleEmail
 
 
 class MembreInline(admin.TabularInline):
@@ -26,3 +26,13 @@ class InscriptionAdmin(admin.ModelAdmin):
 @admin.register(ModeleEmail)
 class ModeleEmailAdmin(admin.ModelAdmin):
     list_display = ("sujet", "titre_rencontre", "date_rencontre", "lieu_rencontre", "modifie_le")
+
+
+@admin.register(CandidaturePoste)
+class CandidaturePosteAdmin(admin.ModelAdmin):
+    list_display = ("prenom", "nom", "poste", "email", "telephone", "departement", "statut", "cree_le")
+    list_filter = ("poste", "statut", "departement", "cree_le")
+    list_editable = ("statut",)
+    search_fields = ("nom", "prenom", "email", "telephone", "departement", "metier", "profession_de_foi")
+    readonly_fields = ("cree_le", "modifie_le")
+

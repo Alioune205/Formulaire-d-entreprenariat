@@ -215,3 +215,77 @@ class ModeleEmail(models.Model):
         self.consigne = DEFAUT_CONSIGNE
         self.save()
         return self
+
+
+class CandidaturePoste(models.Model):
+    """Candidature d'un étudiant à un poste de gouvernance ou de chef de cellule du club."""
+
+    class Categorie(models.TextChoices):
+        BUREAU = "BUREAU", "Bureau Exécutif"
+        CELLULE = "CELLULE", "Cellules Thématiques"
+
+    class Poste(models.TextChoices):
+        # Bureau exécutif
+        PRESIDENT = "PRESIDENT", "Président(e)"
+        VICE_PRESIDENT = "VICE_PRESIDENT", "Vice-Président(e)"
+        SECRETAIRE_GENERAL = "SECRETAIRE_GENERAL", "Secrétaire Général(e)"
+        TRESORIER = "TRESORIER", "Trésorier(ère)"
+        RESPONSABLE_COMMUNICATION = "RESPONSABLE_COMMUNICATION", "Responsable Communication"
+        RESPONSABLE_EVENEMENTIEL = "RESPONSABLE_EVENEMENTIEL", "Responsable Événementiel"
+        RESPONSABLE_PARTENARIAT = "RESPONSABLE_PARTENARIAT", "Responsable Partenariats"
+        RESPONSABLE_PEDAGOGIE = "RESPONSABLE_PEDAGOGIE", "Responsable Pédagogie & Formation"
+        # Chefs de cellules thématiques
+        CHEF_CELLULE_TIC = "CHEF_CELLULE_TIC", "Chef de Cellule TIC"
+        CHEF_CELLULE_AUTOMOBILE = "CHEF_CELLULE_AUTOMOBILE", "Chef de Cellule Automobile"
+        CHEF_CELLULE_ENERGIE = "CHEF_CELLULE_ENERGIE", "Chef de Cellule Énergie"
+        CHEF_CELLULE_SANTE = "CHEF_CELLULE_SANTE", "Chef de Cellule Santé"
+        CHEF_CELLULE_FEMMES = "CHEF_CELLULE_FEMMES", "Chef de Cellule Femmes & Entrepreneuriat"
+
+    class Statut(models.TextChoices):
+        EN_ATTENTE = "EN_ATTENTE", "En attente de validation"
+        VALIDE = "VALIDE", "Candidature validée pour l'élection"
+        REJETE = "REJETE", "Non retenue"
+        ELU = "ELU", "Élu(e)"
+
+    poste = models.CharField("poste brigué", max_length=40, choices=Poste.choices, db_index=True)
+    nom = models.CharField("nom", max_length=80)
+    prenom = models.CharField("prénom", max_length=80)
+    email = models.EmailField(
+        "e-mail",
+        unique=True,
+        help_text="Un candidat ne peut postuler qu'à un seul poste avec son e-mail.",
+    )
+    telephone = models.CharField("téléphone", max_length=30)
+    departement = models.CharField("département", max_length=120)
+    metier = models.CharField("métier / filière", max_length=120)
+    niveau = models.CharField("niveau d'études", max_length=50, blank=True)
+    nom_projet = models.CharField("groupe ou projet au club (optionnel)", max_length=150, blank=True)
+    profession_de_foi = models.TextField("profession de foi / vision pour le poste")
+
+    # Photo obligatoire pour que les électeurs identifient le candidat avant le vote
+    photo = models.ImageField("photo officielle du candidat", upload_to="candidatures/photos/")
+
+    # Vidéo de campagne : soit un lien externe (Drive, YouTube, etc.), soit un court fichier
+    lien_video = models.URLField("lien vidéo de présentation", blank=True, max_length=500)
+    fichier_video = models.FileField("fichier vidéo court", upload_to="candidatures/videos/", blank=True, null=True)
+
+    statut = models.CharField(
+        "statut de candidature",
+        max_length=20,
+        choices=Statut.choices,
+        default=Statut.EN_ATTENTE,
+        db_index=True,
+    )
+    notes_admin = models.TextField("notes internes du jury", blank=True)
+
+    cree_le = models.DateTimeField("date de candidature", auto_now_add=True)
+    modifie_le = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["poste", "nom", "prenom"]
+        verbose_name = "candidature à la gouvernance"
+        verbose_name_plural = "candidatures à la gouvernance"
+
+    def __str__(self):
+        return f"{self.prenom} {self.nom} — {self.get_poste_display()}"
+

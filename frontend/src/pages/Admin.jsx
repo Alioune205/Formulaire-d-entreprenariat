@@ -2,10 +2,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   AlertCircle, BarChart3, ChevronRight, ClipboardCheck, Download, Eye, List, Loader2, Lock, LogOut, Mail, RefreshCw, Save, Search,
-  Trash2, Users, X,
+  Trash2, Users, Vote, X,
 } from 'lucide-react';
 import { api, ErreurApi, telechargerCsv, tokenAdmin } from '../lib/api.js';
 import Entretiens from '../components/admin/Entretiens.jsx';
+import CandidaturesPostes from '../components/admin/CandidaturesPostes.jsx';
 import Recap from '../components/admin/Recap.jsx';
 import { ApercuEmail } from '../components/admin/EnvoiFelicitations.jsx';
 
@@ -385,6 +386,7 @@ function TableauDeBord({ onDeconnexion }) {
             {[
               ['inscriptions', 'Inscriptions', List],
               ['entretiens', 'Entretiens', ClipboardCheck],
+              ['candidatures', 'Candidatures Postes', Vote],
               ['recap', 'Récapitulatif', BarChart3],
             ].map(([id, libelle, Icone]) => (
               <button
@@ -407,6 +409,8 @@ function TableauDeBord({ onDeconnexion }) {
           <div className="mt-6"><Recap onDeconnexion={onDeconnexion} /></div>
         ) : onglet === 'entretiens' ? (
           <div className="mt-6"><Entretiens onDeconnexion={onDeconnexion} onMajStats={charger} /></div>
+        ) : onglet === 'candidatures' ? (
+          <div className="mt-6"><CandidaturesPostes onDeconnexion={onDeconnexion} /></div>
         ) : (<>
 
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">

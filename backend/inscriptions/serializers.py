@@ -3,7 +3,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from .genre import estimer_genre, genre_effectif
-from .models import Inscription, Membre, ModeleEmail
+from .models import CandidaturePoste, Inscription, Membre, ModeleEmail
 
 MIN_MEMBRES = 3
 MAX_MEMBRES = 6
@@ -160,3 +160,73 @@ class ModeleEmailSerializer(serializers.ModelSerializer):
             "texte_rencontre", "date_rencontre", "lieu_rencontre", "consigne", "modifie_le",
         ]
         read_only_fields = ["id", "modifie_le"]
+
+
+class CandidaturePostePublicSerializer(serializers.ModelSerializer):
+    """Utilisé par le formulaire public pour postuler à un poste de gouvernance."""
+
+    photo = serializers.ImageField(
+        required=True,
+        error_messages={"required": "La photo est obligatoire pour que les électeurs puissent vous identifier.",
+                        "blank": "La photo est obligatoire."}
+    )
+
+    class Meta:
+        model = CandidaturePoste
+        fields = [
+            "id", "poste", "nom", "prenom", "email", "telephone",
+            "departement", "metier", "niveau", "nom_projet",
+            "profession_de_foi", "photo", "lien_video", "fichier_video",
+        ]
+        read_only_fields = ["id"]
+
+    def validate_email(self, value):
+        val = value.strip().lower()
+        if CandidaturePoste.objects.filter(email__iexact=val).exists():
+            raise serializers.ValidationError("Une candidature a déjà été enregistrée avec cette adresse e-mail.")
+        return val
+
+    def validate_photo(self, value):
+        # Limite à 6 Mo
+        if value.size > 6 * 1024 * 1024:
+            raise serializers.ValidationError("La photo ne doit pas dépasser 6 Mo.")
+        return value
+
+    def validate_fichier_video(self, value):
+        if value:
+            # Limite à 25 Mo
+            if value.size > 25 * 1024 * 1024:
+                raise serializers.ValidationError("Le fichier vidéo ne doit pas dépasser 25 Mo.")
+        return value
+
+    def validate(self, attrs):
+        for champ in ("nom", "prenom", "telephone", "departement", "metier", "profession_de_foi"):
+            if champ in attrs and isinstance(attrs[champ], str):
+                attrs[champ] = attrs[champ].strip()
+                if not attrs[champ]:
+                    raise serializers.ValidationError({champ: "Ce champ est obligatoire."})
+
+        if len(attrs.get("profession_de_foi", "")) < 30:
+            raise serializers.ValidationError({"profession_de_foi": "Votre profession de foi doit comporter au moins 30 caractères."})
+
+        return attrs
+
+
+class CandidaturePosteAdminSerializer(serializers.ModelSerializer):
+    """Utilisé par le back-office pour consulter et valider les candidatures."""
+
+    poste_libelle = serializers.CharField(source="get_poste_display", read_only=True)
+    statut_libelle = serializers.CharField(source="get_statut_display", read_only=True)
+
+    class Meta:
+        model = CandidaturePoste
+        fields = [
+            "id", "poste", "poste_libelle", "nom", "prenom", "email", "telephone",
+            "departement", "metier", "niveau", "nom_projet",
+            "profession_de_foi", "photo", "lien_video", "fichier_video",
+            "statut", "statut_libelle", "notes_admin", "cree_le", "modifie_le",
+        ]
+        read_only_fields = [
+            "id", "poste_libelle", "statut_libelle", "cree_le", "modifie_le",
+        ]
+

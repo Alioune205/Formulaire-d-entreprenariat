@@ -6,9 +6,12 @@ from . import views
 router = DefaultRouter()
 router.register("admin/inscriptions", views.InscriptionAdminViewSet, basename="admin-inscriptions")
 router.register("admin/membres", views.MembreAdminViewSet, basename="admin-membres")
+router.register("admin/candidatures", views.CandidaturePosteAdminViewSet, basename="admin-candidatures")
 
 urlpatterns = [
     path("inscriptions/", views.InscriptionPubliqueView.as_view(), name="inscription-publique"),
+    path("candidatures/", views.CandidaturePostePubliqueView.as_view(), name="candidature-publique"),
+    path("candidatures/postes/", views.liste_postes_disponibles, name="candidatures-postes"),
     path("infos/", views.infos_publiques, name="infos-publiques"),
     path("suivi/", views.suivi_dossier, name="suivi-dossier"),
     path("recuperation/demande/", views.recuperation_demande, name="recuperation-demande"),

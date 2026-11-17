@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowRight, FileSearch, Lightbulb, Network, Target, Users } from 'lucide-react';
+import { ArrowRight, FileSearch, Lightbulb, Network, Target, Users, Vote } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import CompteARebours from './CompteARebours.jsx';
 
@@ -74,9 +74,12 @@ export default function Hero({ temps }) {
           </div>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <Link to="/elections" className="inline-flex items-center justify-center gap-2 rounded-xl bg-caramel-500 px-7 py-4 font-bold text-white shadow-xl shadow-black/20 transition hover:-translate-y-0.5 hover:bg-caramel-400">
+              <Vote className="h-5 w-5" /> Candidater à un poste <ArrowRight className="h-5 w-5" />
+            </Link>
             {temps.ouvert ? (
-              <a href="#inscription" className="inline-flex items-center justify-center gap-2 rounded-xl bg-caramel-500 px-7 py-4 font-bold text-white shadow-xl shadow-black/20 transition hover:-translate-y-0.5 hover:bg-caramel-400">
-                Inscrire mon groupe <ArrowRight className="h-5 w-5" />
+              <a href="#inscription" className="inline-flex items-center justify-center gap-2 rounded-xl bg-caramel-600 px-7 py-4 font-bold text-white shadow-xl shadow-black/20 transition hover:-translate-y-0.5 hover:bg-caramel-500">
+                Inscrire mon groupe
               </a>
             ) : null}
             <Link to="/suivi" className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/25 px-7 py-4 font-semibold text-white transition hover:bg-white/10">
