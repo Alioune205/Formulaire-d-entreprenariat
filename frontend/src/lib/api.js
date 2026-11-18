@@ -28,6 +28,9 @@ function premierMessage(data) {
 
 export function urlMedia(chemin) {
   if (!chemin) return '';
+  if (BASE.startsWith('https://') && chemin.startsWith('http://')) {
+    return `https://${chemin.slice('http://'.length)}`;
+  }
   if (chemin.startsWith('http://') || chemin.startsWith('https://')) return chemin;
   return `${BASE}${chemin.startsWith('/') ? '' : '/'}${chemin}`;
 }

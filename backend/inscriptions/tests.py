@@ -566,3 +566,29 @@ class CandidaturePosteTests(APITestCase):
         self.assertEqual(r_del.status_code, 204)
         self.assertFalse(CandidaturePoste.objects.filter(pk=c.pk).exists())
 
+    @override_settings(DEBUG=False)
+    def test_media_servi_en_production_debug_false(self):
+        from .models import CandidaturePoste
+        c = CandidaturePoste.objects.create(
+            poste="PRESIDENT",
+            nom="Sene",
+            prenom="Pape Alioune",
+            email="pape.media@isep.sn",
+            telephone="775045567",
+            departement="TIC",
+            metier="Analyse de Performance Digitale",
+            profession_de_foi="Porter les projets étudiants du CIAT vers l'excellence.",
+            photo=self._creer_image(),
+        )
+        r = None
+        try:
+            r = self.client.get(c.photo.url)
+            self.assertEqual(r.status_code, 200)
+            contenu = b"".join(r.streaming_content)
+            self.assertGreater(len(contenu), 0)
+        finally:
+            if r is not None:
+                r.close()
+            if c.photo:
+                c.photo.delete(save=False)
+

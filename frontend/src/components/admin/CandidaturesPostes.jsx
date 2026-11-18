@@ -13,6 +13,32 @@ const STATUTS_CONFIG = {
   ELU: { libelle: 'Élu(e)', classe: 'bg-purple-100 text-purple-800 border-purple-200' },
 };
 
+function PhotoCandidat({ src, prenom, nom, classe }) {
+  const [erreurImg, setErreurImg] = useState(false);
+  const url = urlMedia(src);
+
+  if (!url || erreurImg) {
+    const initiales = `${(prenom || '').charAt(0)}${(nom || '').charAt(0)}`.toUpperCase() || '?';
+    return (
+      <div
+        className={`flex shrink-0 items-center justify-center bg-caramel-100 font-bold text-caramel-800 ${classe}`}
+        aria-label={`${prenom} ${nom}`}
+      >
+        {initiales}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={url}
+      alt={`${prenom} ${nom}`}
+      onError={() => setErreurImg(true)}
+      className={`shrink-0 object-cover ${classe}`}
+    />
+  );
+}
+
 export default function CandidaturesPostes({ onDeconnexion }) {
   const [candidatures, setCandidatures] = useState([]);
   const [stats, setStats] = useState(null);
@@ -242,10 +268,11 @@ export default function CandidaturesPostes({ onDeconnexion }) {
                     >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <img
-                            src={urlMedia(c.photo)}
-                            alt={`${c.prenom} ${c.nom}`}
-                            className="h-11 w-11 shrink-0 rounded-full border border-caramel-300 object-cover shadow-sm"
+                          <PhotoCandidat
+                            src={c.photo}
+                            prenom={c.prenom}
+                            nom={c.nom}
+                            classe="h-11 w-11 rounded-full border border-caramel-300 shadow-sm text-xs"
                           />
                           <div>
                             <p className="font-bold text-brun-800">{c.prenom} {c.nom}</p>
@@ -349,10 +376,11 @@ export default function CandidaturesPostes({ onDeconnexion }) {
             </button>
 
             <div className="flex flex-col sm:flex-row items-start gap-5 border-b border-brun-100 pb-6">
-              <img
-                src={urlMedia(candidatSelectionne.photo)}
-                alt={`${candidatSelectionne.prenom} ${candidatSelectionne.nom}`}
-                className="h-24 w-24 rounded-2xl border-2 border-caramel-300 object-cover shadow-md"
+              <PhotoCandidat
+                src={candidatSelectionne.photo}
+                prenom={candidatSelectionne.prenom}
+                nom={candidatSelectionne.nom}
+                classe="h-24 w-24 rounded-2xl border-2 border-caramel-300 shadow-md text-xl"
               />
               <div className="flex-1">
                 <div className="flex flex-wrap items-center gap-2">
