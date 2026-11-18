@@ -11,7 +11,7 @@ export default function FormulaireCandidature({ posteInitial, onFermer, onSucces
   const [telephone, setTelephone] = useState('');
   const [departement, setDepartement] = useState('TIC');
   const [metier, setMetier] = useState(FILIERES.TIC[0]);
-  const [niveau, setNiveau] = useState('1ère année');
+  const [niveau, setNiveau] = useState('Première année');
   const [nomProjet, setNomProjet] = useState('');
   const [professionDeFoi, setProfessionDeFoi] = useState('');
 
@@ -327,10 +327,8 @@ export default function FormulaireCandidature({ posteInitial, onFermer, onSucces
                   onChange={(e) => setNiveau(e.target.value)}
                   className="champ"
                 >
-                  <option value="1ère année">1ère année (Licence 1 / BTS 1)</option>
-                  <option value="2ème année">2ème année (Licence 2 / BTS 2)</option>
-                  <option value="3ème année">3ème année (Licence 3)</option>
-                  <option value="Master / Autre">Autre</option>
+                  <option value="Première année">Première année</option>
+                  <option value="Deuxième année">Deuxième année</option>
                 </select>
               </div>
             </div>
