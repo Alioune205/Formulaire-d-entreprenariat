@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  AlertCircle, CheckCircle2, ChevronRight, Download, ExternalLink, Eye,
+  AlertCircle, AlertTriangle, CheckCircle2, ChevronRight, Download, ExternalLink, Eye,
   Film, Filter, Loader2, RefreshCw, Search, Trash2, User, Video, XCircle, X,
 } from 'lucide-react';
 import { api, telechargerCsv, urlMedia } from '../../lib/api.js';
@@ -51,6 +51,30 @@ export default function CandidaturesPostes({ onDeconnexion }) {
 
   const [candidatSelectionne, setCandidatSelectionne] = useState(null);
   const [actionEnCours, setActionEnCours] = useState(false);
+
+  const doublonsIds = useMemo(() => {
+    const parTel = new Map();
+    const parNom = new Map();
+    candidatures.forEach((c) => {
+      const chiffres = String(c.telephone || '').replace(/\D/g, '');
+      const telNorm = chiffres.length > 9 && (chiffres.startsWith('221') || chiffres.startsWith('00221')) ? chiffres.slice(-9) : chiffres;
+      if (telNorm.length >= 8) {
+        parTel.set(telNorm, [...(parTel.get(telNorm) || []), c.id]);
+      }
+      const nomNorm = `${(c.prenom || '').trim()} ${(c.nom || '').trim()}`.toLowerCase().replace(/\s+/g, ' ');
+      if (nomNorm.length >= 3) {
+        parNom.set(nomNorm, [...(parNom.get(nomNorm) || []), c.id]);
+      }
+    });
+    const ids = new Set();
+    parTel.forEach((liste) => {
+      if (liste.length > 1) liste.forEach((id) => ids.add(id));
+    });
+    parNom.forEach((liste) => {
+      if (liste.length > 1) liste.forEach((id) => ids.add(id));
+    });
+    return ids;
+  }, [candidatures]);
 
   const charger = useCallback(async () => {
     setChargement(true);
@@ -260,6 +284,15 @@ export default function CandidaturesPostes({ onDeconnexion }) {
         </div>
       )}
 
+      {doublonsIds.size > 0 && (
+        <div role="status" className="flex items-start gap-2.5 rounded-xl border border-amber-300 bg-amber-50 p-3.5 text-sm text-amber-900">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+          <span>
+            <strong>Doublons potentiels détectés ({doublonsIds.size} dossiers)</strong> : ces candidatures partagent le même numéro de téléphone ou le même nom complet (ex. faute de frappe dans l’e-mail). Supprimez l’un des dossiers en doublon.
+          </span>
+        </div>
+      )}
+
       {/* Tableau des candidatures */}
       <div className="overflow-hidden rounded-2xl border border-brun-100 bg-white shadow-sm">
         {!chargement && candidatures.length === 0 ? (
@@ -283,11 +316,12 @@ export default function CandidaturesPostes({ onDeconnexion }) {
               <tbody className="divide-y divide-brun-100">
                 {candidatures.map((c) => {
                   const s = STATUTS_CONFIG[c.statut] || { libelle: c.statut, classe: 'bg-gray-100' };
+                  const estDoublon = doublonsIds.has(c.id);
                   return (
                     <tr
                       key={c.id}
                       onClick={() => setCandidatSelectionne(c)}
-                      className="cursor-pointer hover:bg-caramel-50/40"
+                      className={`cursor-pointer hover:bg-caramel-50/40 ${estDoublon ? 'bg-amber-50/40' : ''}`}
                     >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
@@ -298,7 +332,14 @@ export default function CandidaturesPostes({ onDeconnexion }) {
                             classe="h-11 w-11 rounded-full border border-caramel-300 shadow-sm text-xs"
                           />
                           <div>
-                            <p className="font-bold text-brun-800">{c.prenom} {c.nom}</p>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <p className="font-bold text-brun-800">{c.prenom} {c.nom}</p>
+                              {estDoublon && (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-900">
+                                  Doublon tél./nom
+                                </span>
+                              )}
+                            </div>
                             <p className="text-xs text-brun-500">{c.email} • {c.telephone}</p>
                           </div>
                         </div>

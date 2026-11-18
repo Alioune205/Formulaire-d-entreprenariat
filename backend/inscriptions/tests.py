@@ -662,3 +662,64 @@ class CandidaturePosteTests(APITestCase):
             if c.fichier_video:
                 c.fichier_video.delete(save=False)
 
+    def test_telephone_unique_et_anti_typo_email(self):
+        # 1. Faute de frappe typique @gamil.com bloquée immédiatement
+        r_typo = self.client.post("/api/candidatures/", {
+            "poste": "RESPONSABLE_COMMUNICATION",
+            "nom": "Fall",
+            "prenom": "Adji",
+            "email": "adjifall@gamil.com",
+            "telephone": "789109712",
+            "departement": "Automobile",
+            "metier": "Technicien Supérieur en Carrosserie et Peinture Automobile",
+            "profession_de_foi": "Je souhaite dynamiser la cellule et les projets automobiles.",
+            "photo": self._creer_image(),
+        }, format="multipart")
+        self.assertEqual(r_typo.status_code, 400)
+        self.assertIn("email", r_typo.data)
+        self.assertIn("gmail.com", str(r_typo.data["email"][0]))
+
+        # 2. Candidature valide avec le bon e-mail
+        r_ok = self.client.post("/api/candidatures/", {
+            "poste": "CHEF_CELLULE_AUTOMOBILE",
+            "nom": "Fall",
+            "prenom": "Adji",
+            "email": "adjifall@gmail.com",
+            "telephone": "78 910 97 12",
+            "departement": "Automobile",
+            "metier": "Technicien Supérieur en Carrosserie et Peinture Automobile",
+            "profession_de_foi": "Je souhaite dynamiser la cellule et les projets automobiles.",
+            "photo": self._creer_image(),
+        }, format="multipart")
+        self.assertEqual(r_ok.status_code, 201, r_ok.data)
+
+        # 3. Deuxième candidature sur un autre poste avec un autre e-mail MAIS le même téléphone (+221...)
+        r_dup_tel = self.client.post("/api/candidatures/", {
+            "poste": "RESPONSABLE_COMMUNICATION",
+            "nom": "Fall",
+            "prenom": "Adji",
+            "email": "adji.autre@isep.sn",
+            "telephone": "+221 789109712",
+            "departement": "Automobile",
+            "metier": "Technicien Supérieur en Carrosserie et Peinture Automobile",
+            "profession_de_foi": "Je souhaite aussi porter la communication du club.",
+            "photo": self._creer_image(),
+        }, format="multipart")
+        self.assertEqual(r_dup_tel.status_code, 400)
+        self.assertIn("telephone", r_dup_tel.data)
+
+        # 4. Variante Gmail (points / +tag) bloquée même avec un téléphone différent
+        r_dup_gmail = self.client.post("/api/candidatures/", {
+            "poste": "TRESORIER",
+            "nom": "Fall",
+            "prenom": "Adji",
+            "email": "adji.fall+2@gmail.com",
+            "telephone": "770009988",
+            "departement": "Automobile",
+            "metier": "Technicien Supérieur en Carrosserie et Peinture Automobile",
+            "profession_de_foi": "Je souhaite aussi candidater comme trésorière du club.",
+            "photo": self._creer_image(),
+        }, format="multipart")
+        self.assertEqual(r_dup_gmail.status_code, 400)
+        self.assertIn("email", r_dup_gmail.data)
+

@@ -1,3 +1,5 @@
+import re
+
 from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers
@@ -162,6 +164,42 @@ class ModeleEmailSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "modifie_le"]
 
 
+TYPOS_DOMAINES = {
+    "gamil.com": "gmail.com",
+    "gmial.com": "gmail.com",
+    "gmal.com": "gmail.com",
+    "gmaill.com": "gmail.com",
+    "gmail.con": "gmail.com",
+    "gmail.cm": "gmail.com",
+    "yaho.com": "yahoo.com",
+    "yaho.fr": "yahoo.fr",
+    "yahoo.con": "yahoo.com",
+    "hotmal.com": "hotmail.com",
+    "hotmial.com": "hotmail.com",
+    "outlok.com": "outlook.com",
+}
+
+
+def normaliser_telephone(tel):
+    """Conserve les chiffres ; normalise les numéros sénégalais (+221) sur 9 chiffres."""
+    chiffres = re.sub(r"\D", "", str(tel or ""))
+    if len(chiffres) > 9 and (chiffres.startswith("221") or chiffres.startswith("00221")):
+        return chiffres[-9:]
+    return chiffres
+
+
+def normaliser_email_canonique(email):
+    """Normalise un e-mail (et ignore les points/+tag sur Gmail)."""
+    val = str(email or "").strip().lower()
+    if "@" not in val:
+        return val
+    local, domaine = val.rsplit("@", 1)
+    if domaine in ("gmail.com", "googlemail.com"):
+        local = local.split("+", 1)[0].replace(".", "")
+        domaine = "gmail.com"
+    return f"{local}@{domaine}"
+
+
 class CandidaturePostePublicSerializer(serializers.ModelSerializer):
     """Utilisé par le formulaire public pour postuler à un poste de gouvernance."""
 
@@ -182,8 +220,31 @@ class CandidaturePostePublicSerializer(serializers.ModelSerializer):
 
     def validate_email(self, value):
         val = value.strip().lower()
-        if CandidaturePoste.objects.filter(email__iexact=val).exists():
-            raise serializers.ValidationError("Une candidature a déjà été enregistrée avec cette adresse e-mail.")
+        if "@" in val:
+            domaine = val.rsplit("@", 1)[1]
+            if domaine in TYPOS_DOMAINES:
+                raise serializers.ValidationError(
+                    f"Vérifiez votre adresse e-mail : vouliez-vous écrire « @{TYPOS_DOMAINES[domaine]} » au lieu de « @{domaine} » ?"
+                )
+
+        canon = normaliser_email_canonique(val)
+        existants = CandidaturePoste.objects.values_list("email", flat=True)
+        if any(normaliser_email_canonique(e) == canon for e in existants):
+            raise serializers.ValidationError(
+                "Une candidature a déjà été enregistrée avec cette adresse e-mail. Un candidat ne peut postuler qu'à un seul poste."
+            )
+        return val
+
+    def validate_telephone(self, value):
+        val = value.strip()
+        tel_norm = normaliser_telephone(val)
+        if len(tel_norm) < 8:
+            raise serializers.ValidationError("Indiquez un numéro de téléphone valide (au moins 8 chiffres).")
+        existants = CandidaturePoste.objects.values_list("telephone", flat=True)
+        if any(normaliser_telephone(t) == tel_norm for t in existants):
+            raise serializers.ValidationError(
+                "Une candidature a déjà été enregistrée avec ce numéro de téléphone. Un candidat ne peut postuler qu'à un seul poste."
+            )
         return val
 
     def validate_photo(self, value):

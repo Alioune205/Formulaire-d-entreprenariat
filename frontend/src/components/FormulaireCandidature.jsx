@@ -30,6 +30,7 @@ export default function FormulaireCandidature({ posteInitial, onFermer, onSucces
   const [chargement, setChargement] = useState(false);
   const [erreur, setErreur] = useState('');
   const [termine, setTermine] = useState(false);
+  const formScrollRef = useRef(null);
 
   const posteSelectionne = POSTES.find((p) => p.code === posteCode) || POSTES[0];
 
@@ -118,16 +119,17 @@ export default function FormulaireCandidature({ posteInitial, onFermer, onSucces
       setTermine(true);
       if (onSucces) onSucces();
     } catch (err) {
-      if (err instanceof ErreurApi) {
-        if (err.status === 413) {
-          setErreur('Fichiers trop volumineux pour le serveur. Réduisez la taille de la vidéo ou utilisez un lien.');
-        } else if (err.status >= 500) {
-          setErreur('Le serveur a rencontré une erreur temporaire. Veuillez réessayer dans quelques instants.');
-        } else {
-          setErreur(err.message || 'Vérifiez les informations saisies et réessayez.');
-        }
-      } else {
-        setErreur('Impossible de joindre le serveur. Vérifiez votre connexion Internet.');
+      setErreur(
+        err instanceof ErreurApi
+          ? err.status === 413
+            ? 'Fichiers trop volumineux pour le serveur. Réduisez la taille de la vidéo ou utilisez un lien.'
+            : err.status >= 500
+              ? 'Le serveur a rencontré une erreur temporaire. Veuillez réessayer dans quelques instants.'
+              : err.message || 'Vérifiez les informations saisies et réessayez.'
+          : 'Impossible de joindre le serveur. Vérifiez votre connexion Internet.'
+      );
+      if (formScrollRef.current) {
+        formScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } finally {
       setChargement(false);
@@ -186,7 +188,7 @@ export default function FormulaireCandidature({ posteInitial, onFermer, onSucces
             </button>
           </div>
         ) : (
-          <form onSubmit={soumettre} className="max-h-[75vh] space-y-6 overflow-y-auto px-6 py-6 sm:px-8">
+          <form ref={formScrollRef} onSubmit={soumettre} className="max-h-[75vh] space-y-6 overflow-y-auto px-6 py-6 sm:px-8">
             {erreur && (
               <div role="alert" className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                 <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
@@ -482,6 +484,12 @@ export default function FormulaireCandidature({ posteInitial, onFermer, onSucces
             </div>
 
             {/* Boutons d'action */}
+            {erreur && (
+              <div role="alert" className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-3.5 text-xs font-medium text-red-700 sm:text-sm">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>{erreur}</span>
+              </div>
+            )}
             <div className="flex items-center justify-end gap-3 border-t border-brun-100 pt-5">
               <button
                 type="button"
