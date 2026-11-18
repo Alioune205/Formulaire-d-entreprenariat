@@ -239,7 +239,7 @@ class CandidaturePoste(models.Model):
         CHEF_CELLULE_AUTOMOBILE = "CHEF_CELLULE_AUTOMOBILE", "Chef de Cellule Automobile"
         CHEF_CELLULE_ENERGIE = "CHEF_CELLULE_ENERGIE", "Chef de Cellule Énergie"
         CHEF_CELLULE_SANTE = "CHEF_CELLULE_SANTE", "Chef de Cellule Santé"
-        CHEF_CELLULE_FEMMES = "CHEF_CELLULE_FEMMES", "Chef de Cellule Femmes & Entrepreneuriat"
+        CHEF_CELLULE_FEMMES = "CHEF_CELLULE_FEMMES", "Chef de Cellule Femmes"
 
     class Statut(models.TextChoices):
         EN_ATTENTE = "EN_ATTENTE", "En attente de validation"

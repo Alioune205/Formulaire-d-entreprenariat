@@ -21,11 +21,11 @@ export default function CompteARebours({ temps, variante = 'sombre' }) {
       <div
         className={`inline-flex items-center gap-2.5 rounded-xl px-4 py-3 text-sm font-bold ${
           sombre
-            ? 'border border-emerald-400/30 bg-emerald-500/15 text-emerald-200 backdrop-blur-sm'
-            : 'border border-emerald-200 bg-emerald-50 text-emerald-800'
+            ? 'border border-caramel-400/40 bg-caramel-500/20 text-caramel-200 backdrop-blur-sm'
+            : 'border border-caramel-200 bg-caramel-50 text-brun-800'
         }`}
       >
-        <CheckCircle2 className="h-4 w-4 shrink-0" />
+        <CheckCircle2 className={`h-4 w-4 shrink-0 ${sombre ? 'text-caramel-300' : 'text-caramel-600'}`} />
         Inscriptions réouvertes — Candidat seul (1 membre) ou équipe (jusqu’à 6)
       </div>
     );

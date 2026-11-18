@@ -17,34 +17,34 @@ export default function Accueil() {
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 text-xs sm:text-sm">
           <p className="flex items-center gap-2 font-medium text-brun-100">
             <span className="inline-flex items-center gap-1 rounded-full bg-caramel-500 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-white">
-              <CheckCircle2 className="h-3 w-3" /> Réouvert
+              <Vote className="h-3 w-3" /> Élections & Votes
             </span>
             <span>
-              <strong className="text-white">Suite à la présentation d'aujourd'hui</strong> — Inscriptions réouvertes dès 1 membre + Élections du Bureau.
+              <strong className="text-white">Candidatures aux 13 postes ouvertes</strong> — Et suite à la présentation d'aujourd'hui, inscriptions réouvertes dès 1 membre.
             </span>
           </p>
           <div className="flex items-center gap-4">
+            <Link
+              to="/elections"
+              className="inline-flex items-center gap-1 font-bold text-caramel-300 transition hover:text-caramel-200"
+            >
+              Élections & Votes <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
             {temps.ouvert && (
               <a
                 href="#inscription"
-                className="inline-flex items-center gap-1 font-bold text-caramel-300 transition hover:text-caramel-200"
+                className="inline-flex items-center gap-1 font-bold text-white/90 transition hover:text-caramel-200"
               >
-                Inscrire un projet <ArrowRight className="h-3.5 w-3.5" />
+                <CheckCircle2 className="h-3.5 w-3.5 text-caramel-300" /> Inscrire un projet
               </a>
             )}
-            <Link
-              to="/elections"
-              className="inline-flex items-center gap-1 font-bold text-white/90 transition hover:text-caramel-200"
-            >
-              <Vote className="h-3.5 w-3.5 text-caramel-300" /> Élections
-            </Link>
           </div>
         </div>
       </div>
       <main>
         <Hero temps={temps} />
-        <PresentationAujourdhui temps={temps} />
         <MiseEnAvantElections />
+        <PresentationAujourdhui temps={temps} />
         <FormulaireInscription temps={temps} />
       </main>
       <Footer />

@@ -74,15 +74,15 @@ export default function Hero({ temps }) {
           </div>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <Link to="/elections" className="inline-flex items-center justify-center gap-2 rounded-xl bg-caramel-500 px-6 py-3.5 font-bold text-white shadow-xl shadow-black/20 transition hover:-translate-y-0.5 hover:bg-caramel-400">
+              <Vote className="h-5 w-5" /> Élections & Votes <ArrowRight className="h-4 w-4" />
+            </Link>
             {temps.ouvert ? (
-              <a href="#inscription" className="inline-flex items-center justify-center gap-2 rounded-xl bg-caramel-500 px-7 py-4 font-bold text-white shadow-xl shadow-black/20 transition hover:-translate-y-0.5 hover:bg-caramel-400">
-                Inscrire mon projet <ArrowRight className="h-5 w-5" />
+              <a href="#inscription" className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 py-3.5 font-bold text-brun-900 shadow-xl shadow-black/20 transition hover:-translate-y-0.5 hover:bg-caramel-50">
+                Inscrire mon projet <ArrowRight className="h-4 w-4 text-caramel-600" />
               </a>
             ) : null}
-            <Link to="/elections" className={`inline-flex items-center justify-center gap-2 rounded-xl px-7 py-4 font-bold text-white shadow-xl shadow-black/20 transition hover:-translate-y-0.5 ${temps.ouvert ? 'border border-caramel-300/50 bg-white/10 hover:bg-white/20' : 'bg-caramel-500 hover:bg-caramel-400'}`}>
-              <Vote className="h-5 w-5" /> Candidater à un poste
-            </Link>
-            <Link to="/suivi" className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/25 px-7 py-4 font-semibold text-white transition hover:bg-white/10">
+            <Link to="/suivi" className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/30 px-6 py-3.5 font-semibold text-white transition hover:bg-white/10">
               <FileSearch className="h-5 w-5" /> Suivre mon dossier
             </Link>
           </div>

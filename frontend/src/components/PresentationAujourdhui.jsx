@@ -45,8 +45,8 @@ export default function PresentationAujourdhui({ temps }) {
 
           {/* 3 points clés annoncés aujourd'hui */}
           <div className="mt-7 grid gap-4 md:grid-cols-3">
-            <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/40 p-5">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white">
+            <div className="rounded-2xl border border-caramel-300 bg-[#faf6f3] p-5">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-caramel-500 text-white">
                 <CheckCircle2 className="h-5 w-5" />
               </div>
               <h3 className="mt-3 text-base font-extrabold text-brun-900">1. Plateforme réouverte</h3>

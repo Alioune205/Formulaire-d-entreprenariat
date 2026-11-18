@@ -163,7 +163,7 @@ export const POSTES = [
   },
   {
     code: 'CHEF_CELLULE_FEMMES',
-    titre: 'Chef de Cellule Femmes & Entrepreneuriat',
+    titre: 'Chef de Cellule Femmes',
     categorie: 'Cellules Thématiques',
     description: 'Promotion du leadership féminin, inclusion et soutien aux porteuses de projets.',
     missions: [

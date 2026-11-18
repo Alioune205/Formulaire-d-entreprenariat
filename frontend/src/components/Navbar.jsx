@@ -9,23 +9,23 @@ export default function Navbar() {
           <img src="/logo-ciat.png" alt="CIAT — ISEP Amadou Trawaré" className="h-9 w-auto sm:h-10" />
         </Link>
         <nav className="flex items-center gap-1.5 text-sm font-semibold sm:gap-2">
-          <a href="/#presentation" className="hidden rounded-lg px-3 py-2 text-brun-700 hover:bg-brun-50 md:block">
-            Présentation
-          </a>
           <NavLink
             to="/elections"
             className={({ isActive }) =>
-              `inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition sm:text-sm ${
+              `inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold shadow-sm transition sm:text-sm ${
                 isActive
                   ? 'bg-brun-800 text-white ring-2 ring-caramel-400'
-                  : 'border border-caramel-200 bg-caramel-50 text-caramel-800 hover:bg-caramel-100'
+                  : 'bg-brun-800 text-white hover:bg-brun-700'
               }`
             }
           >
-            <Vote className="h-4 w-4 shrink-0" />
+            <Vote className="h-4 w-4 shrink-0 text-caramel-300" />
             <span>Élections</span>
-            <span className="hidden lg:inline">& Postes</span>
+            <span className="hidden md:inline">& Votes</span>
           </NavLink>
+          <a href="/#presentation" className="hidden rounded-lg px-3 py-2 text-brun-700 hover:bg-brun-50 md:block">
+            Présentation
+          </a>
           <NavLink
             to="/suivi"
             className={({ isActive }) =>

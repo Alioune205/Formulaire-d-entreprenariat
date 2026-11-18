@@ -33,11 +33,11 @@ export default function MiseEnAvantElections() {
             <div className="flex flex-col justify-between p-6 sm:p-8 lg:p-10">
               <div>
                 <div className="inline-flex items-center gap-2 rounded-full border border-caramel-200 bg-caramel-50 px-3.5 py-1 text-xs font-extrabold uppercase tracking-widest text-caramel-800">
-                  <Vote className="h-3.5 w-3.5" /> À la une · Gouvernance 2026-2027
+                  <Vote className="h-3.5 w-3.5" /> À la une · Élections & Votes 2026-2027
                 </div>
 
                 <h2 className="mt-4 text-2xl font-extrabold leading-tight tracking-tight text-brun-900 sm:text-3xl">
-                  Élections du Club : déposez votre candidature officielle
+                  Élections & Votes du Club : déposez votre candidature officielle
                 </h2>
 
                 <p className="mt-3 text-sm leading-relaxed text-brun-600 sm:text-base">
@@ -94,7 +94,7 @@ export default function MiseEnAvantElections() {
                   className="inline-flex items-center justify-center gap-2 rounded-xl bg-caramel-500 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-caramel-500/25 transition hover:-translate-y-0.5 hover:bg-caramel-600"
                 >
                   <Vote className="h-4 w-4" />
-                  Accéder aux 13 postes et candidater
+                  Accéder aux 13 postes, candidatures et votes
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
