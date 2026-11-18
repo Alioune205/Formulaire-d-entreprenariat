@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   AlertCircle, CheckCircle2, ChevronRight, Download, ExternalLink, Eye,
-  Film, Filter, Loader2, RefreshCw, Search, User, Video, XCircle, X,
+  Film, Filter, Loader2, RefreshCw, Search, Trash2, User, Video, XCircle, X,
 } from 'lucide-react';
-import { api, telechargerCsv } from '../../lib/api.js';
+import { api, telechargerCsv, urlMedia } from '../../lib/api.js';
 import { POSTES } from '../../lib/postes.js';
 
 const STATUTS_CONFIG = {
@@ -56,6 +56,11 @@ export default function CandidaturesPostes({ onDeconnexion }) {
     charger();
   }, [charger]);
 
+  const rafraichirStats = useCallback(async () => {
+    const s = await api('/admin/candidatures/stats/', { auth: true });
+    setStats(s);
+  }, []);
+
   const changerStatut = async (id, nouveauStatut, notes = undefined) => {
     setActionEnCours(true);
     try {
@@ -72,11 +77,33 @@ export default function CandidaturesPostes({ onDeconnexion }) {
       if (candidatSelectionne && candidatSelectionne.id === id) {
         setCandidatSelectionne(maj);
       }
-      // Recharger stats
-      const s = await api('/admin/candidatures/stats/', { auth: true });
-      setStats(s);
+      await rafraichirStats();
     } catch (err) {
-      alert('Erreur lors du changement de statut : ' + err.message);
+      setErreur('Erreur lors du changement de statut : ' + err.message);
+    } finally {
+      setActionEnCours(false);
+    }
+  };
+
+  const supprimerCandidature = async (candidat) => {
+    const nomComplet = `${candidat.prenom} ${candidat.nom}`;
+    if (!window.confirm(`Supprimer définitivement la candidature de « ${nomComplet} » (${candidat.poste_libelle}) ?`)) {
+      return;
+    }
+    setActionEnCours(true);
+    setErreur(null);
+    try {
+      await api(`/admin/candidatures/${candidat.id}/`, {
+        method: 'DELETE',
+        auth: true,
+      });
+      setCandidatures((prev) => prev.filter((c) => c.id !== candidat.id));
+      if (candidatSelectionne && candidatSelectionne.id === candidat.id) {
+        setCandidatSelectionne(null);
+      }
+      await rafraichirStats();
+    } catch (err) {
+      setErreur('Impossible de supprimer la candidature : ' + err.message);
     } finally {
       setActionEnCours(false);
     }
@@ -216,7 +243,7 @@ export default function CandidaturesPostes({ onDeconnexion }) {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <img
-                            src={c.photo}
+                            src={urlMedia(c.photo)}
                             alt={`${c.prenom} ${c.nom}`}
                             className="h-11 w-11 shrink-0 rounded-full border border-caramel-300 object-cover shadow-sm"
                           />
@@ -254,7 +281,7 @@ export default function CandidaturesPostes({ onDeconnexion }) {
                           </a>
                         ) : c.fichier_video ? (
                           <a
-                            href={c.fichier_video}
+                            href={urlMedia(c.fichier_video)}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
@@ -274,9 +301,24 @@ export default function CandidaturesPostes({ onDeconnexion }) {
                       </td>
 
                       <td className="px-4 py-3 text-right">
-                        <span className="inline-flex items-center gap-1 text-xs font-bold text-caramel-700">
-                          Consulter <ChevronRight className="h-4 w-4" />
-                        </span>
+                        <div className="inline-flex items-center justify-end gap-2">
+                          <span className="inline-flex items-center gap-1 text-xs font-bold text-caramel-700">
+                            Consulter <ChevronRight className="h-4 w-4" />
+                          </span>
+                          <button
+                            type="button"
+                            disabled={actionEnCours}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              supprimerCandidature(c);
+                            }}
+                            title="Supprimer ce candidat"
+                            aria-label={`Supprimer la candidature de ${c.prenom} ${c.nom}`}
+                            className="rounded-lg p-1.5 text-red-600 transition hover:bg-red-50 disabled:opacity-40"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -308,7 +350,7 @@ export default function CandidaturesPostes({ onDeconnexion }) {
 
             <div className="flex flex-col sm:flex-row items-start gap-5 border-b border-brun-100 pb-6">
               <img
-                src={candidatSelectionne.photo}
+                src={urlMedia(candidatSelectionne.photo)}
                 alt={`${candidatSelectionne.prenom} ${candidatSelectionne.nom}`}
                 className="h-24 w-24 rounded-2xl border-2 border-caramel-300 object-cover shadow-md"
               />
@@ -352,7 +394,7 @@ export default function CandidaturesPostes({ onDeconnexion }) {
                 ) : candidatSelectionne.fichier_video ? (
                   <div className="mt-2">
                     <video controls className="w-full max-h-56 rounded-xl bg-black">
-                      <source src={candidatSelectionne.fichier_video} />
+                      <source src={urlMedia(candidatSelectionne.fichier_video)} />
                       Votre navigateur ne supporte pas la lecture vidéo.
                     </video>
                   </div>
@@ -412,6 +454,15 @@ export default function CandidaturesPostes({ onDeconnexion }) {
                       Remettre en attente
                     </button>
                   )}
+
+                  <button
+                    type="button"
+                    disabled={actionEnCours}
+                    onClick={() => supprimerCandidature(candidatSelectionne)}
+                    className="ml-auto inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-white px-3.5 py-2 text-xs font-bold text-red-700 transition hover:bg-red-50 disabled:opacity-40"
+                  >
+                    <Trash2 className="h-4 w-4" /> Supprimer
+                  </button>
                 </div>
               </div>
             </div>

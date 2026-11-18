@@ -4,6 +4,7 @@ import Navbar from '../components/Navbar.jsx';
 import Footer from '../components/Footer.jsx';
 import FormulaireCandidature from '../components/FormulaireCandidature.jsx';
 import { POSTES } from '../lib/postes.js';
+import { api } from '../lib/api.js';
 
 export default function Elections() {
   const [filtreCategorie, setFiltreCategorie] = useState('TOUS'); // 'TOUS', 'Bureau Exécutif', 'Cellules Thématiques'
@@ -11,16 +12,18 @@ export default function Elections() {
   const [modalOuverte, setModalOuverte] = useState(false);
   const [postesApi, setPostesApi] = useState(POSTES);
 
-  useEffect(() => {
-    // Récupérer les stats de candidatures depuis l'API
-    fetch('/api/candidatures/postes/')
-      .then((res) => (res.ok ? res.json() : null))
+  const chargerPostes = () => {
+    api('/candidatures/postes/')
       .then((data) => {
         if (data && Array.isArray(data)) {
           setPostesApi(data);
         }
       })
       .catch(() => {});
+  };
+
+  useEffect(() => {
+    chargerPostes();
   }, []);
 
   const postesFiltres = filtreCategorie === 'TOUS'
@@ -185,13 +188,7 @@ export default function Elections() {
           <FormulaireCandidature
             posteInitial={posteSelectionne}
             onFermer={() => setModalOuverte(false)}
-            onSucces={() => {
-              // Rafraîchir les stats
-              fetch('/api/candidatures/postes/')
-                .then((r) => r.json())
-                .then((d) => setPostesApi(d))
-                .catch(() => {});
-            }}
+            onSucces={chargerPostes}
           />
         )}
       </main>

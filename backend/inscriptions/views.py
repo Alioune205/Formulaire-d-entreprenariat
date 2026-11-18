@@ -548,6 +548,13 @@ class CandidaturePosteAdminViewSet(viewsets.ModelViewSet):
             )
         return qs
 
+    def perform_destroy(self, instance):
+        if instance.photo:
+            instance.photo.delete(save=False)
+        if instance.fichier_video:
+            instance.fichier_video.delete(save=False)
+        super().perform_destroy(instance)
+
     @action(detail=True, methods=["post"], url_path="changer-statut")
     def changer_statut(self, request, pk=None):
         candidature = self.get_object()

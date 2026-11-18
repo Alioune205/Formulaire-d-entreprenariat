@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { AlertCircle, Camera, CheckCircle2, Film, Link as LinkIcon, Loader2, Upload, User, Video, X } from 'lucide-react';
 import { POSTES } from '../lib/postes.js';
 import { FILIERES } from '../lib/filieres.js';
+import { api, ErreurApi } from '../lib/api.js';
 
 export default function FormulaireCandidature({ posteInitial, onFermer, onSucces }) {
   const [posteCode, setPosteCode] = useState(posteInitial?.code || 'PRESIDENT');
@@ -109,29 +110,25 @@ export default function FormulaireCandidature({ posteInitial, onFermer, onSucces
         formData.append('fichier_video', videoFichier);
       }
 
-      const res = await fetch('/api/candidatures/', {
+      await api('/candidatures/', {
         method: 'POST',
         body: formData,
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        if (data.email) {
-          throw new Error(Array.isArray(data.email) ? data.email[0] : data.email);
-        }
-        if (data.photo) {
-          throw new Error(Array.isArray(data.photo) ? data.photo[0] : data.photo);
-        }
-        if (data.detail) {
-          throw new Error(data.detail);
-        }
-        throw new Error('Une erreur est survenue lors de l’enregistrement de votre candidature.');
-      }
-
       setTermine(true);
       if (onSucces) onSucces();
     } catch (err) {
-      setErreur(err.message || 'Impossible de joindre le serveur. Veuillez réessayer.');
+      if (err instanceof ErreurApi) {
+        if (err.status === 413) {
+          setErreur('Fichiers trop volumineux pour le serveur. Réduisez la taille de la vidéo ou utilisez un lien.');
+        } else if (err.status >= 500) {
+          setErreur('Le serveur a rencontré une erreur temporaire. Veuillez réessayer dans quelques instants.');
+        } else {
+          setErreur(err.message || 'Vérifiez les informations saisies et réessayez.');
+        }
+      } else {
+        setErreur('Impossible de joindre le serveur. Vérifiez votre connexion Internet.');
+      }
     } finally {
       setChargement(false);
     }

@@ -27,7 +27,7 @@ PAYLOAD = {
 }
 
 
-@override_settings(DATE_LIMITE_INSCRIPTION="2099-12-31T23:59:59")
+@override_settings(DATE_LIMITE_INSCRIPTION="2099-12-31T23:59:59+00:00")
 class InscriptionTests(APITestCase):
     def setUp(self):
         cache.clear()  # remet à zéro les limites de requêtes entre les tests
@@ -231,7 +231,7 @@ class InscriptionTests(APITestCase):
         self.assertEqual(r.status_code, 401)
 
 
-@override_settings(DATE_LIMITE_INSCRIPTION="2099-12-31T23:59:59")
+@override_settings(DATE_LIMITE_INSCRIPTION="2099-12-31T23:59:59+00:00")
 class BackOfficeTests(APITestCase):
     """Récapitulatif, genre estimé par le prénom, e-mails de félicitations."""
 
@@ -541,4 +541,28 @@ class CandidaturePosteTests(APITestCase):
         c.refresh_from_db()
         self.assertEqual(c.statut, "VALIDE")
         self.assertEqual(c.notes_admin, "Dossier complet, excellente vidéo.")
+
+    def test_backoffice_supprimer_candidature(self):
+        from .models import CandidaturePoste
+        c = CandidaturePoste.objects.create(
+            poste="TRESORIER",
+            nom="Ndiaye",
+            prenom="Cheikh",
+            email="cheikh.ndiaye@isep.sn",
+            telephone="770001122",
+            departement="TIC",
+            metier="Cybersécurité",
+            profession_de_foi="Garantir une gestion financière transparente du club.",
+            photo=self._creer_image(),
+        )
+
+        # Un utilisateur anonyme ne peut pas supprimer
+        r_anon = self.client.delete(f"/api/admin/candidatures/{c.id}/")
+        self.assertEqual(r_anon.status_code, 401)
+        self.assertTrue(CandidaturePoste.objects.filter(pk=c.pk).exists())
+
+        # Un administrateur authentifié peut supprimer
+        r_del = self.client.delete(f"/api/admin/candidatures/{c.id}/", **self.auth_headers)
+        self.assertEqual(r_del.status_code, 204)
+        self.assertFalse(CandidaturePoste.objects.filter(pk=c.pk).exists())
 
