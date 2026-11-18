@@ -5,6 +5,7 @@ import CompteARebours from './CompteARebours.jsx';
 
 const DIAPOS = [
   { src: '/hero.jpeg', alt: 'Étudiants du CIAT travaillant ensemble à l’incubateur', position: 'object-[30%_center]', legende: 'Incubateur CIAT' },
+  { src: '/hero-elections.jpeg', alt: 'Élections de gouvernance du Club d’Entrepreneuriat CIAT', position: 'object-[70%_center]', legende: 'Élections & Gouvernance' },
   { src: '/hero-atelier.jpeg', alt: 'Étudiants du CIAT en atelier automobile', position: 'object-[40%_center]', legende: 'Atelier automobile' },
 ];
 const DUREE = 6000;
@@ -56,7 +57,7 @@ export default function Hero({ temps }) {
         <div className="max-w-2xl">
           <span className="inline-flex items-center gap-2 rounded-full border border-caramel-300/40 bg-caramel-500/15 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider text-caramel-200">
             <span className="h-2 w-2 animate-pulse rounded-full bg-caramel-400" />
-            {temps.ouvert ? 'Inscriptions ouvertes • 2026-2027' : 'Inscriptions closes • 2026-2027'}
+            {temps.ouvert ? 'Inscriptions ouvertes • 2026-2027' : 'Élections ouvertes • Gouvernance 2026-2027'}
           </span>
 
           <h1 className="mt-6 text-4xl font-extrabold leading-[1.1] tracking-tight text-white sm:text-5xl lg:text-6xl">

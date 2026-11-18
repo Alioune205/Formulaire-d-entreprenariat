@@ -37,11 +37,16 @@ export default function Elections() {
       <Navbar />
       <main className="min-h-screen bg-gradient-to-b from-[#faf6f3] via-[#ffffff] to-[#faf6f3]">
         {/* Hero Section */}
-        <section className="relative overflow-hidden border-b border-brun-100 bg-[#2b170e] py-16 text-white sm:py-20">
-          <div className="absolute inset-0 bg-gradient-to-r from-[#2b170e] via-[#3a2014] to-[#2b170e]" />
+        <section className="relative isolate overflow-hidden border-b border-brun-100 bg-[#2b170e] py-16 text-white sm:py-24">
+          <img
+            src="/hero-elections.jpeg"
+            alt="Étudiants du CIAT lors des élections de gouvernance du club"
+            className="absolute inset-0 -z-10 h-full w-full object-cover object-[72%_center] lg:object-right"
+          />
+          <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[#2b170e]/95 via-[#2b170e]/80 to-[#2b170e]/20" />
           <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
-            <div className="max-w-3xl">
-              <span className="inline-flex items-center gap-2 rounded-full border border-caramel-400/30 bg-caramel-500/15 px-3.5 py-1 text-xs font-bold uppercase tracking-widest text-caramel-300">
+            <div className="max-w-2xl">
+              <span className="inline-flex items-center gap-2 rounded-full border border-caramel-400/40 bg-caramel-500/20 px-3.5 py-1 text-xs font-bold uppercase tracking-widest text-caramel-300 backdrop-blur-sm">
                 <Vote className="h-4 w-4" /> Gouvernance & Élections · Cohorte 2026-2027
               </span>
               <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-white sm:text-5xl">
@@ -55,17 +60,17 @@ export default function Elections() {
 
               {/* Rappel des étapes clés */}
               <div className="mt-8 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+                <div className="rounded-xl border border-white/15 bg-[#2b170e]/65 p-4 backdrop-blur-md">
                   <span className="text-xs font-bold uppercase tracking-wider text-caramel-300">1. Candidatures</span>
                   <p className="mt-1 text-sm font-semibold text-white">Ouvertes dès maintenant</p>
                   <p className="mt-0.5 text-xs text-brun-200">Dépôt avec photo et vidéo</p>
                 </div>
-                <div className="rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+                <div className="rounded-xl border border-white/15 bg-[#2b170e]/65 p-4 backdrop-blur-md">
                   <span className="text-xs font-bold uppercase tracking-wider text-caramel-300">2. Campagne</span>
                   <p className="mt-1 text-sm font-semibold text-white">Validation des listes</p>
                   <p className="mt-0.5 text-xs text-brun-200">Publication des fiches candidats</p>
                 </div>
-                <div className="rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+                <div className="rounded-xl border border-white/15 bg-[#2b170e]/65 p-4 backdrop-blur-md">
                   <span className="text-xs font-bold uppercase tracking-wider text-caramel-300">3. Scrutin</span>
                   <p className="mt-1 text-sm font-semibold text-white">Samedi en ligne</p>
                   <p className="mt-0.5 text-xs text-brun-200">Vote sécurisé par code e-mail</p>
@@ -78,7 +83,7 @@ export default function Elections() {
         {/* Section Liste des postes */}
         <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
           {/* Barre de filtres */}
-          <div className="flex flex-col items-start justify-between gap-4 border-b border-brun-100 pb-6 sm:flex-row sm:items-center">
+          <div className="flex flex-col items-start justify-between gap-4 border-b border-brun-100 pb-6 lg:flex-row lg:items-center">
             <div>
               <h2 className="text-2xl font-extrabold text-brun-800 sm:text-3xl">
                 Postes ouverts aux candidatures ({postesFiltres.length})
@@ -88,25 +93,25 @@ export default function Elections() {
               </p>
             </div>
 
-            <div className="flex flex-wrap rounded-xl border border-brun-200 bg-white p-1 text-xs font-bold sm:text-sm">
+            <div className="flex shrink-0 flex-wrap rounded-xl border border-brun-200 bg-white p-1 text-xs font-bold sm:flex-nowrap sm:text-sm">
               <button
                 type="button"
                 onClick={() => setFiltreCategorie('TOUS')}
-                className={`rounded-lg px-3.5 py-1.5 transition ${filtreCategorie === 'TOUS' ? 'bg-caramel-500 text-white shadow-sm' : 'text-brun-700 hover:text-brun-900'}`}
+                className={`whitespace-nowrap rounded-lg px-3.5 py-1.5 transition ${filtreCategorie === 'TOUS' ? 'bg-caramel-500 text-white shadow-sm' : 'text-brun-700 hover:text-brun-900'}`}
               >
                 Tous les postes (13)
               </button>
               <button
                 type="button"
                 onClick={() => setFiltreCategorie('Bureau Exécutif')}
-                className={`rounded-lg px-3.5 py-1.5 transition ${filtreCategorie === 'Bureau Exécutif' ? 'bg-caramel-500 text-white shadow-sm' : 'text-brun-700 hover:text-brun-900'}`}
+                className={`whitespace-nowrap rounded-lg px-3.5 py-1.5 transition ${filtreCategorie === 'Bureau Exécutif' ? 'bg-caramel-500 text-white shadow-sm' : 'text-brun-700 hover:text-brun-900'}`}
               >
                 Bureau Exécutif (8)
               </button>
               <button
                 type="button"
                 onClick={() => setFiltreCategorie('Cellules Thématiques')}
-                className={`rounded-lg px-3.5 py-1.5 transition ${filtreCategorie === 'Cellules Thématiques' ? 'bg-caramel-500 text-white shadow-sm' : 'text-brun-700 hover:text-brun-900'}`}
+                className={`whitespace-nowrap rounded-lg px-3.5 py-1.5 transition ${filtreCategorie === 'Cellules Thématiques' ? 'bg-caramel-500 text-white shadow-sm' : 'text-brun-700 hover:text-brun-900'}`}
               >
                 Cellules Thématiques (5)
               </button>
