@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
 import { api } from './api.js';
 
-// Valeur de secours si l'API est injoignable : samedi 14 novembre 2026, 23 h 59 (heure de Dakar = UTC).
+// Valeur de secours si l'API est injoignable.
 const DATE_LIMITE_SECOURS = '2026-11-14T23:59:59+00:00';
 
 /**
- * Renvoie la date limite d'inscription et le temps restant, mis à jour chaque seconde.
- * L'heure du serveur est utilisée pour corriger une éventuelle horloge déréglée sur le téléphone.
+ * Renvoie l'état d'ouverture des inscriptions contrôlé depuis l'administration,
+ * ainsi que les données de date limite éventuelles.
  */
 export default function useDateLimite() {
   const [dateLimite, setDateLimite] = useState(() => new Date(DATE_LIMITE_SECOURS));
+  const [ouvert, setOuvert] = useState(true);
   const [decalage, setDecalage] = useState(0);
   const [maintenant, setMaintenant] = useState(() => Date.now());
 
@@ -17,9 +18,12 @@ export default function useDateLimite() {
     let actif = true;
     api('/infos/')
       .then((d) => {
-        if (!actif) return;
-        setDateLimite(new Date(d.date_limite));
-        setDecalage(new Date(d.maintenant).getTime() - Date.now());
+        if (!actif || !d) return;
+        if (typeof d.inscriptions_ouvertes === 'boolean') {
+          setOuvert(d.inscriptions_ouvertes);
+        }
+        if (d.date_limite) setDateLimite(new Date(d.date_limite));
+        if (d.maintenant) setDecalage(new Date(d.maintenant).getTime() - Date.now());
       })
       .catch(() => {});
     const t = setInterval(() => setMaintenant(Date.now()), 1000);
@@ -29,7 +33,8 @@ export default function useDateLimite() {
   const restant = Math.max(0, dateLimite.getTime() - (maintenant + decalage));
   return {
     dateLimite,
-    ouvert: restant > 0,
+    ouvert,
+    aCompteARebours: restant > 0,
     jours: Math.floor(restant / 86_400_000),
     heures: Math.floor((restant / 3_600_000) % 24),
     minutes: Math.floor((restant / 60_000) % 60),

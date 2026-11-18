@@ -57,7 +57,7 @@ export default function Hero({ temps }) {
         <div className="max-w-2xl">
           <span className="inline-flex items-center gap-2 rounded-full border border-caramel-300/40 bg-caramel-500/15 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider text-caramel-200">
             <span className="h-2 w-2 animate-pulse rounded-full bg-caramel-400" />
-            {temps.ouvert ? 'Inscriptions ouvertes • 2026-2027' : 'Élections ouvertes • Gouvernance 2026-2027'}
+            {temps.ouvert ? 'Inscriptions réouvertes • Dès 1 membre' : 'Élections ouvertes • Gouvernance 2026-2027'}
           </span>
 
           <h1 className="mt-6 text-4xl font-extrabold leading-[1.1] tracking-tight text-white sm:text-5xl lg:text-6xl">
@@ -66,23 +66,22 @@ export default function Hero({ temps }) {
           </h1>
 
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-brun-100">
-            Le Centre d'Innovation, d'Application et de Transfert de l'ISEP Amadou Trawaré accompagne les groupes
-            d'étudiants qui veulent construire un projet concret.
+            Le Centre d'Innovation, d'Application et de Transfert de l'ISEP Amadou Trawaré accompagne les étudiants — seul(e) ou en groupe — qui veulent construire un projet concret.
           </p>
 
           <div className="mt-8">
             <CompteARebours temps={temps} variante="sombre" />
           </div>
 
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Link to="/elections" className="inline-flex items-center justify-center gap-2 rounded-xl bg-caramel-500 px-7 py-4 font-bold text-white shadow-xl shadow-black/20 transition hover:-translate-y-0.5 hover:bg-caramel-400">
-              <Vote className="h-5 w-5" /> Candidater à un poste <ArrowRight className="h-5 w-5" />
-            </Link>
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             {temps.ouvert ? (
-              <a href="#inscription" className="inline-flex items-center justify-center gap-2 rounded-xl bg-caramel-600 px-7 py-4 font-bold text-white shadow-xl shadow-black/20 transition hover:-translate-y-0.5 hover:bg-caramel-500">
-                Inscrire mon groupe
+              <a href="#inscription" className="inline-flex items-center justify-center gap-2 rounded-xl bg-caramel-500 px-7 py-4 font-bold text-white shadow-xl shadow-black/20 transition hover:-translate-y-0.5 hover:bg-caramel-400">
+                Inscrire mon projet <ArrowRight className="h-5 w-5" />
               </a>
             ) : null}
+            <Link to="/elections" className={`inline-flex items-center justify-center gap-2 rounded-xl px-7 py-4 font-bold text-white shadow-xl shadow-black/20 transition hover:-translate-y-0.5 ${temps.ouvert ? 'border border-caramel-300/50 bg-white/10 hover:bg-white/20' : 'bg-caramel-500 hover:bg-caramel-400'}`}>
+              <Vote className="h-5 w-5" /> Candidater à un poste
+            </Link>
             <Link to="/suivi" className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/25 px-7 py-4 font-semibold text-white transition hover:bg-white/10">
               <FileSearch className="h-5 w-5" /> Suivre mon dossier
             </Link>

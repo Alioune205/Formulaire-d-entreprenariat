@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  AlertCircle, BarChart3, ChevronRight, ClipboardCheck, Download, Eye, List, Loader2, Lock, LogOut, Mail, RefreshCw, Save, Search,
-  Trash2, Users, Vote, X,
+  AlertCircle, BarChart3, CheckCircle2, ChevronRight, ClipboardCheck, Download, Eye, List, Loader2, Lock, LogOut, Mail, RefreshCw, Save, Search,
+  Trash2, Unlock, Users, Vote, X,
 } from 'lucide-react';
 import { api, ErreurApi, telechargerCsv, tokenAdmin } from '../lib/api.js';
 import Entretiens from '../components/admin/Entretiens.jsx';
@@ -299,6 +299,8 @@ function TableauDeBord({ onDeconnexion }) {
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState(null);
   const [selection, setSelection] = useState(null);
+  const [inscriptionsOuvertes, setInscriptionsOuvertes] = useState(null);
+  const [basculeInscriptions, setBasculeInscriptions] = useState(false);
 
   const params = useCallback(() => {
     const p = new URLSearchParams();
@@ -312,12 +314,16 @@ function TableauDeBord({ onDeconnexion }) {
     setChargement(true);
     setErreur(null);
     try {
-      const [liste, st] = await Promise.all([
+      const [liste, st, param] = await Promise.all([
         api(`/admin/inscriptions/${params()}`, { auth: true }),
         api('/admin/inscriptions/stats/', { auth: true }),
+        api('/admin/parametres/', { auth: true }).catch(() => null),
       ]);
       setInscriptions(liste);
       setStats(st);
+      if (param && typeof param.inscriptions_ouvertes === 'boolean') {
+        setInscriptionsOuvertes(param.inscriptions_ouvertes);
+      }
     } catch (err) {
       if (err instanceof ErreurApi && err.status === 401) return onDeconnexion();
       setErreur('Impossible de charger les inscriptions.');
@@ -325,6 +331,31 @@ function TableauDeBord({ onDeconnexion }) {
       setChargement(false);
     }
   }, [params, onDeconnexion]);
+
+  const basculerInscriptions = async () => {
+    if (inscriptionsOuvertes === null) return;
+    const prochain = !inscriptionsOuvertes;
+    const message = prochain
+      ? 'Réouvrir immédiatement les inscriptions sur la plateforme publique ?'
+      : 'Fermer les inscriptions sur la plateforme publique ? Le formulaire deviendra inaccessible aux nouveaux candidats.';
+    if (!window.confirm(message)) return;
+
+    setBasculeInscriptions(true);
+    setErreur(null);
+    try {
+      const res = await api('/admin/parametres/', {
+        method: 'PATCH',
+        body: { inscriptions_ouvertes: prochain },
+        auth: true,
+      });
+      setInscriptionsOuvertes(res.inscriptions_ouvertes);
+    } catch (err) {
+      if (err instanceof ErreurApi && err.status === 401) return onDeconnexion();
+      setErreur('Impossible de modifier l’état des inscriptions.');
+    } finally {
+      setBasculeInscriptions(false);
+    }
+  };
 
   // Recherche avec un léger délai pour éviter une requête par frappe.
   useEffect(() => {
@@ -412,6 +443,55 @@ function TableauDeBord({ onDeconnexion }) {
         ) : onglet === 'candidatures' ? (
           <div className="mt-6"><CandidaturesPostes onDeconnexion={onDeconnexion} /></div>
         ) : (<>
+
+        {inscriptionsOuvertes !== null && (
+          <div
+            className={`mt-6 flex flex-col justify-between gap-4 rounded-2xl border p-4 sm:flex-row sm:items-center sm:px-6 ${
+              inscriptionsOuvertes
+                ? 'border-emerald-200 bg-emerald-50/70'
+                : 'border-red-200 bg-red-50/70'
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              <div
+                className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                  inscriptionsOuvertes ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'
+                }`}
+              >
+                {inscriptionsOuvertes ? <CheckCircle2 className="h-5 w-5" /> : <Lock className="h-5 w-5" />}
+              </div>
+              <div>
+                <p className="text-sm font-extrabold text-brun-900">
+                  {inscriptionsOuvertes ? 'Plateforme ouverte aux inscriptions' : 'Inscriptions actuellement fermées'}
+                </p>
+                <p className="mt-0.5 text-xs text-brun-600">
+                  {inscriptionsOuvertes
+                    ? 'Les étudiants peuvent s’inscrire dès 1 seul membre ou en groupe sur la page d’accueil.'
+                    : 'Le formulaire public est verrouillé. Cliquez sur Réouvrir pour le réactiver immédiatement.'}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              disabled={basculeInscriptions}
+              onClick={basculerInscriptions}
+              className={`inline-flex shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold shadow-sm transition disabled:opacity-50 sm:text-sm ${
+                inscriptionsOuvertes
+                  ? 'border border-red-300 bg-white text-red-700 hover:bg-red-600 hover:text-white'
+                  : 'bg-emerald-600 text-white hover:bg-emerald-700'
+              }`}
+            >
+              {basculeInscriptions ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : inscriptionsOuvertes ? (
+                <Lock className="h-4 w-4" />
+              ) : (
+                <Unlock className="h-4 w-4" />
+              )}
+              {inscriptionsOuvertes ? 'Fermer les inscriptions' : 'Réouvrir les inscriptions'}
+            </button>
+          </div>
+        )}
 
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {KPIS.map(([libelle, valeur, couleur]) => (

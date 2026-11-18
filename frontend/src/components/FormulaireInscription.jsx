@@ -157,9 +157,9 @@ export default function FormulaireInscription({ temps }) {
         <div className="mx-auto mb-10 max-w-2xl text-center">
           <p className="text-sm font-bold uppercase tracking-wider text-caramel-600">Formulaire d'inscription</p>
           <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-brun-800 sm:text-4xl">
-            Inscrivez votre groupe au club
+            Inscrivez votre projet au club
           </h2>
-          <p className="mt-3 text-brun-600">Tous les champs sont obligatoires.</p>
+          <p className="mt-3 text-brun-600">Seul(e) dès 1 membre ou en équipe jusqu’à 6 membres. Tous les champs sont obligatoires.</p>
           {!succes && temps.ouvert && (
             <div className="mt-8 flex justify-center">
               <CompteARebours temps={temps} variante="clair" />
@@ -172,9 +172,9 @@ export default function FormulaireInscription({ temps }) {
             <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-brun-100 text-brun-700">
               <Lock className="h-8 w-8" />
             </div>
-            <h3 className="text-2xl font-bold text-brun-800">Les inscriptions sont closes</h3>
+            <h3 className="text-2xl font-bold text-brun-800">Les inscriptions sont fermées</h3>
             <p className="mt-3 leading-relaxed text-brun-600">
-              La période d’inscription de cette cohorte est terminée. Les groupes déjà inscrits peuvent suivre l’avancement de leur dossier.
+              Les inscriptions de cette cohorte ont été clôturées par l’administration. Les porteurs de projets et groupes déjà inscrits peuvent suivre l’avancement de leur dossier.
             </p>
             <Link to="/suivi" className="btn-primaire mt-8">
               <FileSearch className="h-4 w-4" /> Suivre mon dossier
@@ -210,7 +210,7 @@ export default function FormulaireInscription({ temps }) {
           <form onSubmit={soumettre} noValidate className="overflow-hidden rounded-3xl border border-brun-100 bg-white shadow-xl shadow-brun-900/5">
             <div className="bg-brun-800 px-6 py-6 text-white sm:px-10">
               <p className="text-lg font-bold">Dossier d'inscription • Cohorte 2026-2027</p>
-              <p className="mt-1 text-sm text-brun-200">Comptez environ 5 minutes pour un groupe de 3 à 5 personnes.</p>
+              <p className="mt-1 text-sm text-brun-200">Candidature individuelle (1 membre) ou en groupe (jusqu’à 6 personnes).</p>
             </div>
 
             <div className="space-y-10 p-6 sm:p-10">
@@ -223,14 +223,14 @@ export default function FormulaireInscription({ temps }) {
 
               {/* 1. Groupe & projet */}
               <div>
-                <TitreBloc icone={Users} numero={1}>Le groupe et le projet</TitreBloc>
+                <TitreBloc icone={Users} numero={1}>Le projet et l'identifiant du dossier</TitreBloc>
                 <div className="grid gap-5 sm:grid-cols-2">
                   <div>
-                    <label htmlFor="nom_groupe" className="label">Nom du groupe</label>
+                    <label htmlFor="nom_groupe" className="label">Nom du groupe ou votre nom (si candidat seul)</label>
                     <input
                       id="nom_groupe"
                       className={`champ ${erreurs.nom_groupe ? 'champ-erreur' : ''}`}
-                      placeholder="Ex : Les Bâtisseurs"
+                      placeholder="Ex : Les Bâtisseurs ou Awa Diop"
                       maxLength={120}
                       value={form.nom_groupe}
                       onChange={(e) => maj('nom_groupe', e.target.value)}
@@ -276,7 +276,7 @@ export default function FormulaireInscription({ temps }) {
               {/* 2. Membres */}
               <div className="border-t border-brun-100 pt-8">
                 <TitreBloc icone={UserRound} numero={2}>
-                  Les membres <span className="font-semibold normal-case tracking-normal text-brun-400">({form.membres.length} — de {MIN_MEMBRES} à {MAX_MEMBRES} membres)</span>
+                  Les membres <span className="font-semibold normal-case tracking-normal text-brun-400">({form.membres.length} — de {MIN_MEMBRES} à {MAX_MEMBRES} membres, seul ou en groupe)</span>
                 </TitreBloc>
 
                 <div className="space-y-4">
@@ -387,9 +387,9 @@ export default function FormulaireInscription({ temps }) {
 
               {/* 4. Engagement */}
               <div className="border-t border-brun-100 pt-8">
-                <TitreBloc icone={Handshake} numero={4}>Engagement du groupe</TitreBloc>
+                <TitreBloc icone={Handshake} numero={4}>Engagement</TitreBloc>
                 <div className={`rounded-2xl border-2 p-6 transition ${form.engagement ? 'border-emerald-300 bg-emerald-50/60' : erreurs.engagement ? 'border-red-300 bg-red-50/40' : 'border-caramel-200 bg-caramel-100/40'}`}>
-                  <p className="text-sm font-semibold text-brun-800">En rejoignant le club, notre groupe s'engage à :</p>
+                  <p className="text-sm font-semibold text-brun-800">En rejoignant le club, je m’engage / notre équipe s’engage à :</p>
                   <ul className="mt-3 space-y-2">
                     {ENGAGEMENTS.map((t) => (
                       <li key={t} className="flex gap-2 text-sm text-brun-700">
@@ -409,7 +409,7 @@ export default function FormulaireInscription({ temps }) {
                     }`}
                   >
                     {form.engagement ? <CheckCircle2 className="h-5 w-5" /> : <Handshake className="h-5 w-5" />}
-                    {form.engagement ? 'Notre groupe est engagé' : 'Je m’engage au nom du groupe'}
+                    {form.engagement ? 'Engagement validé' : 'Je m’engage à respecter la charte'}
                   </button>
                   <Erreur>{erreurs.engagement}</Erreur>
                 </div>
@@ -418,7 +418,7 @@ export default function FormulaireInscription({ temps }) {
               {/* Envoi */}
               <div className="flex flex-col items-center justify-between gap-4 border-t border-brun-100 pt-8 sm:flex-row">
                 <p className="text-xs text-brun-500">
-                  {form.engagement ? 'Tout est prêt, vous pouvez envoyer.' : 'Le bouton d’envoi s’active après l’engagement du groupe.'}
+                  {form.engagement ? 'Tout est prêt, vous pouvez envoyer.' : 'Le bouton d’envoi s’active après validation de l’engagement.'}
                 </p>
                 <button type="submit" disabled={envoi || !form.engagement} className="btn-primaire w-full px-8 py-4 sm:w-auto">
                   {envoi ? <><Loader2 className="h-4 w-4 animate-spin" /> Envoi…</> : <><Send className="h-4 w-4" /> Envoyer l'inscription</>}

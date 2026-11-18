@@ -22,5 +22,5 @@ export const LIBELLES_DEPARTEMENTS = {
   Automobile: 'Automobile — Métiers de l’Automobile',
 };
 
-export const MIN_MEMBRES = 3;
+export const MIN_MEMBRES = 1;
 export const MAX_MEMBRES = 6;

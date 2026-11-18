@@ -24,7 +24,7 @@ from .emails import (
     apercu_acceptation, apercu_modele_acceptation, apres_reponse, envoyer_acceptation, envoyer_alerte_regeneration, envoyer_code,
     envoyer_confirmation,
 )
-from .models import CandidaturePoste, CodeVerification, Inscription, Membre, ModeleEmail
+from .models import CandidaturePoste, CodeVerification, Inscription, Membre, ModeleEmail, ParametresPlateforme
 from .genre import genre_effectif
 from .postes import POSTES_CATALOGUE
 from .recap import calculer_recap
@@ -42,7 +42,7 @@ def date_limite():
 
 
 def inscriptions_ouvertes():
-    return timezone.now() <= date_limite()
+    return ParametresPlateforme.obtenir().inscriptions_ouvertes
 
 
 @api_view(["GET"])
@@ -208,8 +208,7 @@ class InscriptionPubliqueView(generics.CreateAPIView):
     def create(self, request, *args, **kwargs):
         if not inscriptions_ouvertes():
             return Response(
-                {"detail": "Les inscriptions sont closes depuis le "
-                           f"{timezone.localtime(date_limite()):%d/%m/%Y à %H:%M}."},
+                {"detail": "Les inscriptions sont actuellement fermées par l'administration."},
                 status=status.HTTP_403_FORBIDDEN,
             )
         serializer = self.get_serializer(data=request.data)
@@ -245,6 +244,26 @@ def connexion_admin(request):
 def deconnexion_admin(request):
     Token.objects.filter(user=request.user).delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(["GET", "PATCH", "POST"])
+@permission_classes([permissions.IsAdminUser])
+def parametres_plateforme(request):
+    """GET/PATCH/POST /api/admin/parametres/ — ouvrir ou fermer les inscriptions en 1 clic."""
+    params = ParametresPlateforme.obtenir()
+    if request.method in ("PATCH", "POST"):
+        valeur = request.data.get("inscriptions_ouvertes")
+        if not isinstance(valeur, bool):
+            return Response(
+                {"detail": "Le champ 'inscriptions_ouvertes' doit être un booléen (true/false)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        params.inscriptions_ouvertes = valeur
+        params.save(update_fields=["inscriptions_ouvertes", "modifie_le"])
+    return Response({
+        "inscriptions_ouvertes": params.inscriptions_ouvertes,
+        "modifie_le": params.modifie_le,
+    })
 
 
 class InscriptionAdminViewSet(

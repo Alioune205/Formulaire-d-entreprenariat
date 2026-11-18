@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import CandidaturePoste, Inscription, Membre, ModeleEmail
+from .models import CandidaturePoste, Inscription, Membre, ModeleEmail, ParametresPlateforme
 
 
 class MembreInline(admin.TabularInline):
@@ -35,4 +35,9 @@ class CandidaturePosteAdmin(admin.ModelAdmin):
     list_editable = ("statut",)
     search_fields = ("nom", "prenom", "email", "telephone", "departement", "metier", "profession_de_foi")
     readonly_fields = ("cree_le", "modifie_le")
+
+
+@admin.register(ParametresPlateforme)
+class ParametresPlateformeAdmin(admin.ModelAdmin):
+    list_display = ("inscriptions_ouvertes", "modifie_le")
 

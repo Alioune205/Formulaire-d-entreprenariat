@@ -1,17 +1,32 @@
-import { Clock } from 'lucide-react';
+import { CheckCircle2, Clock } from 'lucide-react';
 import { formatDateLimite } from '../lib/useDateLimite.js';
 
 const deux = (n) => String(n).padStart(2, '0');
 
 /** variante "sombre" (sur le hero) ou "clair" (au-dessus du formulaire). */
 export default function CompteARebours({ temps, variante = 'sombre' }) {
-  const { ouvert, jours, heures, minutes, secondes, dateLimite } = temps;
+  const { ouvert, aCompteARebours, jours, heures, minutes, secondes, dateLimite } = temps;
   const sombre = variante === 'sombre';
 
   if (!ouvert) {
     return (
       <div className={`inline-flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-bold ${sombre ? 'bg-white/10 text-white' : 'bg-red-50 text-red-700'}`}>
-        <Clock className="h-4 w-4" /> Les inscriptions sont closes.
+        <Clock className="h-4 w-4" /> Les inscriptions sont actuellement fermées.
+      </div>
+    );
+  }
+
+  if (!aCompteARebours) {
+    return (
+      <div
+        className={`inline-flex items-center gap-2.5 rounded-xl px-4 py-3 text-sm font-bold ${
+          sombre
+            ? 'border border-emerald-400/30 bg-emerald-500/15 text-emerald-200 backdrop-blur-sm'
+            : 'border border-emerald-200 bg-emerald-50 text-emerald-800'
+        }`}
+      >
+        <CheckCircle2 className="h-4 w-4 shrink-0" />
+        Inscriptions réouvertes — Candidat seul (1 membre) ou équipe (jusqu’à 6)
       </div>
     );
   }

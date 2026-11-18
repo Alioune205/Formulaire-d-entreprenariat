@@ -5,7 +5,7 @@ from rest_framework import serializers
 from .genre import estimer_genre, genre_effectif
 from .models import CandidaturePoste, Inscription, Membre, ModeleEmail
 
-MIN_MEMBRES = 3
+MIN_MEMBRES = 1
 MAX_MEMBRES = 6
 
 # Départements et filières (métiers) de l'ISEP Amadou Trawaré.
@@ -91,7 +91,7 @@ class InscriptionPubliqueSerializer(serializers.ModelSerializer):
 
     def validate_membres(self, value):
         if len(value) < MIN_MEMBRES:
-            raise serializers.ValidationError(f"Un groupe compte au minimum {MIN_MEMBRES} membres.")
+            raise serializers.ValidationError("Ajoutez au moins un membre.")
         if len(value) > MAX_MEMBRES:
             raise serializers.ValidationError(f"Un groupe compte au maximum {MAX_MEMBRES} membres.")
         return value

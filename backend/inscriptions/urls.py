@@ -18,5 +18,6 @@ urlpatterns = [
     path("recuperation/verification/", views.recuperation_verification, name="recuperation-verification"),
     path("admin/connexion/", views.connexion_admin, name="admin-connexion"),
     path("admin/deconnexion/", views.deconnexion_admin, name="admin-deconnexion"),
+    path("admin/parametres/", views.parametres_plateforme, name="admin-parametres"),
     path("", include(router.urls)),
 ]

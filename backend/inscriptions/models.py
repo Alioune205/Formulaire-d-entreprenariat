@@ -289,3 +289,27 @@ class CandidaturePoste(models.Model):
     def __str__(self):
         return f"{self.prenom} {self.nom} — {self.get_poste_display()}"
 
+
+class ParametresPlateforme(models.Model):
+    """Paramètres globaux de la plateforme modifiables depuis le back-office."""
+
+    inscriptions_ouvertes = models.BooleanField(
+        "inscriptions ouvertes",
+        default=True,
+        help_text="Active ou ferme immédiatement les inscriptions de projets sur le site.",
+    )
+    modifie_le = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "paramètres de la plateforme"
+        verbose_name_plural = "paramètres de la plateforme"
+
+    def __str__(self):
+        etat = "Ouvertes" if self.inscriptions_ouvertes else "Fermées"
+        return f"Plateforme CIAT — Inscriptions : {etat}"
+
+    @classmethod
+    def obtenir(cls):
+        obj, _ = cls.objects.get_or_create(id=1, defaults={"inscriptions_ouvertes": True})
+        return obj
+

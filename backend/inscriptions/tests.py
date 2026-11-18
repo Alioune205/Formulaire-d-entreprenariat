@@ -78,13 +78,21 @@ class InscriptionTests(APITestCase):
         self.assertEqual(r.status_code, 400)
         self.assertIn("departement", r.data["membres"][0])
 
-    def test_minimum_trois_membres(self):
-        for n in (0, 1, 2):
-            r = self.client.post("/api/inscriptions/", {**PAYLOAD, "membres": PAYLOAD["membres"][:n]}, format="json")
-            self.assertEqual(r.status_code, 400, n)
-            self.assertIn("membres", r.data)
-        r = self.client.post("/api/inscriptions/", PAYLOAD, format="json")
-        self.assertEqual(r.status_code, 201, r.data)
+    def test_minimum_un_membre(self):
+        # 0 membre échoue
+        r_vide = self.client.post("/api/inscriptions/", {**PAYLOAD, "membres": []}, format="json")
+        self.assertEqual(r_vide.status_code, 400)
+        self.assertIn("membres", r_vide.data)
+        # 1 seul membre (candidat individuel) est désormais accepté
+        r_solo = self.client.post("/api/inscriptions/", {**PAYLOAD, "membres": PAYLOAD["membres"][:1]}, format="json")
+        self.assertEqual(r_solo.status_code, 201, r_solo.data)
+        # 3 membres fonctionnent également
+        r_equipe = self.client.post(
+            "/api/inscriptions/",
+            {**PAYLOAD, "nom_groupe": "Équipe Complète"},
+            format="json",
+        )
+        self.assertEqual(r_equipe.status_code, 201, r_equipe.data)
 
     def test_nom_groupe_unique(self):
         self.client.post("/api/inscriptions/", PAYLOAD, format="json")
@@ -129,12 +137,38 @@ class InscriptionTests(APITestCase):
         self.assertEqual(r.status_code, 200)
         self.assertIn("date_limite", r.data)
 
-    def test_inscriptions_closes_apres_date_limite(self):
-        with self.settings(DATE_LIMITE_INSCRIPTION="2000-01-01T00:00:00+00:00"):
-            r = self.client.post("/api/inscriptions/", PAYLOAD, format="json")
-            self.assertEqual(r.status_code, 403)
-            self.assertFalse(self.client.get("/api/infos/").data["inscriptions_ouvertes"])
+    def test_admin_fermer_et_rouvrir_inscriptions(self):
+        # Un anonyme ne peut pas modifier les paramètres
+        self.assertEqual(
+            self.client.patch("/api/admin/parametres/", {"inscriptions_ouvertes": False}, format="json").status_code,
+            401,
+        )
+
+        # Connexion admin
+        get_user_model().objects.create_user("admin_params", password="motdepasse-test", is_staff=True)
+        tok = self.client.post("/api/admin/connexion/", {"username": "admin_params", "password": "motdepasse-test"}).data["token"]
+        auth = {"HTTP_AUTHORIZATION": f"Token {tok}"}
+
+        # Par défaut, la plateforme est réouverte
+        self.assertTrue(self.client.get("/api/infos/").data["inscriptions_ouvertes"])
+
+        # L'admin ferme les inscriptions en 1 clic
+        r_ferme = self.client.patch("/api/admin/parametres/", {"inscriptions_ouvertes": False}, format="json", **auth)
+        self.assertEqual(r_ferme.status_code, 200)
+        self.assertFalse(r_ferme.data["inscriptions_ouvertes"])
+        self.assertFalse(self.client.get("/api/infos/").data["inscriptions_ouvertes"])
+
+        # Le dépôt public est bloqué (403)
+        r_bloque = self.client.post("/api/inscriptions/", PAYLOAD, format="json")
+        self.assertEqual(r_bloque.status_code, 403)
         self.assertEqual(Inscription.objects.count(), 0)
+
+        # L'admin réouvre les inscriptions
+        r_ouvert = self.client.patch("/api/admin/parametres/", {"inscriptions_ouvertes": True}, format="json", **auth)
+        self.assertEqual(r_ouvert.status_code, 200)
+        self.assertTrue(r_ouvert.data["inscriptions_ouvertes"])
+        r_ok = self.client.post("/api/inscriptions/", PAYLOAD, format="json")
+        self.assertEqual(r_ok.status_code, 201)
 
     # --- Récupération de la référence par e-mail ---
 
