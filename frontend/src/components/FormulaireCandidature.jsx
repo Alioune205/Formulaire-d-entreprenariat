@@ -400,10 +400,11 @@ export default function FormulaireCandidature({ posteInitial, onFermer, onSucces
             </div>
 
             {/* 8. Vidéo de campagne (Double option) */}
-            <div className="rounded-2xl border border-brun-200 bg-[#faf6f3] p-4 sm:p-5">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-bold text-brun-800">
-                  Vidéo de présentation / Campagne <span className="text-xs font-normal text-brun-500">(Recommandée)</span>
+            <div className="rounded-2xl border border-caramel-200 bg-[#faf6f3] p-4 sm:p-5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label className="inline-flex items-center gap-2 text-sm font-extrabold text-brun-900">
+                  <Video className="h-4 w-4 text-caramel-600" />
+                  Vidéo de campagne électorale <span className="text-xs font-normal text-brun-500">(Recommandée)</span>
                 </label>
                 <div className="flex rounded-lg border border-brun-200 bg-white p-0.5 text-xs font-semibold">
                   <button
@@ -423,9 +424,22 @@ export default function FormulaireCandidature({ posteInitial, onFermer, onSucces
                 </div>
               </div>
 
-              <p className="mt-1 text-xs text-brun-600">
-                Une courte vidéo de 60 à 90 secondes où vous expliquez votre motivation et votre programme pour le poste.
-              </p>
+              <div className="mt-2.5 rounded-xl border border-caramel-200/80 bg-white p-3.5 text-xs leading-relaxed text-brun-700">
+                <p className="font-bold text-brun-900">
+                  À quoi sert cette vidéo ? C’est votre vidéo officielle de campagne :
+                </p>
+                <p className="mt-1">
+                  Elle sera consultée par les électeurs sur la plateforme avant le vote pour vous présenter et convaincre :
+                </p>
+                <ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-brun-600">
+                  <li><strong>Votre présentation</strong> : prénom, nom, département et filière.</li>
+                  <li><strong>Vos motivations</strong> : pourquoi vous souhaitez occuper ce poste de responsabilité.</li>
+                  <li><strong>Votre programme</strong> : vos idées concrètes et engagements pour faire avancer le club.</li>
+                </ul>
+                <p className="mt-1.5 text-[11px] font-semibold text-caramel-800">
+                  Durée idéale : 1 à 2 minutes maximum (vous pouvez simplement vous filmer avec votre téléphone).
+                </p>
+              </div>
 
               {modeVideo === 'lien' ? (
                 <div className="mt-3">

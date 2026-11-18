@@ -587,6 +587,17 @@ class CandidaturePosteAdminViewSet(viewsets.ModelViewSet):
         candidature.save(update_fields=["statut", "notes_admin", "modifie_le"])
         return Response(self.get_serializer(candidature).data)
 
+    @action(detail=True, methods=["post", "delete"], url_path="supprimer-video")
+    def supprimer_video(self, request, pk=None):
+        """Supprime uniquement la vidéo de campagne (fichier et/ou lien) d'un candidat."""
+        candidature = self.get_object()
+        if candidature.fichier_video:
+            candidature.fichier_video.delete(save=False)
+            candidature.fichier_video = None
+        candidature.lien_video = ""
+        candidature.save(update_fields=["fichier_video", "lien_video", "modifie_le"])
+        return Response(self.get_serializer(candidature).data)
+
     @action(detail=False, methods=["get"], url_path="stats")
     def stats(self, request):
         tous = CandidaturePoste.objects.all()

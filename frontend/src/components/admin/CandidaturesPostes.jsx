@@ -135,6 +135,29 @@ export default function CandidaturesPostes({ onDeconnexion }) {
     }
   };
 
+  const supprimerVideo = async (candidat) => {
+    const nomComplet = `${candidat.prenom} ${candidat.nom}`;
+    if (!window.confirm(`Supprimer uniquement la vidéo de campagne de « ${nomComplet} » ? Sa candidature et sa photo seront conservées.`)) {
+      return;
+    }
+    setActionEnCours(true);
+    setErreur(null);
+    try {
+      const maj = await api(`/admin/candidatures/${candidat.id}/supprimer-video/`, {
+        method: 'DELETE',
+        auth: true,
+      });
+      setCandidatures((prev) => prev.map((c) => (c.id === candidat.id ? maj : c)));
+      if (candidatSelectionne && candidatSelectionne.id === candidat.id) {
+        setCandidatSelectionne(maj);
+      }
+    } catch (err) {
+      setErreur('Impossible de supprimer la vidéo : ' + err.message);
+    } finally {
+      setActionEnCours(false);
+    }
+  };
+
   const exporterCsv = async () => {
     try {
       await telechargerCsv('/admin/candidatures/export-csv/', 'candidatures_gouvernance_ciat.csv');
@@ -296,26 +319,43 @@ export default function CandidaturesPostes({ onDeconnexion }) {
                       </td>
 
                       <td className="px-4 py-3">
-                        {c.lien_video ? (
-                          <a
-                            href={c.lien_video}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100"
-                          >
-                            <ExternalLink className="h-3.5 w-3.5" /> Lien vidéo
-                          </a>
-                        ) : c.fichier_video ? (
-                          <a
-                            href={urlMedia(c.fichier_video)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="inline-flex items-center gap-1 rounded-md bg-purple-50 px-2 py-1 text-xs font-semibold text-purple-700 hover:bg-purple-100"
-                          >
-                            <Film className="h-3.5 w-3.5" /> Fichier MP4
-                          </a>
+                        {c.lien_video || c.fichier_video ? (
+                          <div className="inline-flex items-center gap-1.5">
+                            {c.lien_video ? (
+                              <a
+                                href={c.lien_video}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+                              >
+                                <ExternalLink className="h-3.5 w-3.5" /> Lien vidéo
+                              </a>
+                            ) : (
+                              <a
+                                href={urlMedia(c.fichier_video)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex items-center gap-1 rounded-md bg-purple-50 px-2 py-1 text-xs font-semibold text-purple-700 hover:bg-purple-100"
+                              >
+                                <Film className="h-3.5 w-3.5" /> Fichier vidéo
+                              </a>
+                            )}
+                            <button
+                              type="button"
+                              disabled={actionEnCours}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                supprimerVideo(c);
+                              }}
+                              title="Supprimer uniquement la vidéo"
+                              aria-label={`Supprimer la vidéo de ${c.prenom} ${c.nom}`}
+                              className="rounded-md p-1 text-red-600 transition hover:bg-red-50 disabled:opacity-40"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         ) : (
                           <span className="text-xs text-brun-400">Aucune</span>
                         )}
@@ -406,7 +446,19 @@ export default function CandidaturesPostes({ onDeconnexion }) {
             <div className="mt-5 space-y-5 max-h-[60vh] overflow-y-auto pr-1">
               {/* Vidéo */}
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-caramel-700">Vidéo de campagne</h4>
+                <div className="flex items-center justify-between gap-2">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-caramel-700">Vidéo de campagne</h4>
+                  {(candidatSelectionne.lien_video || candidatSelectionne.fichier_video) && (
+                    <button
+                      type="button"
+                      disabled={actionEnCours}
+                      onClick={() => supprimerVideo(candidatSelectionne)}
+                      className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-white px-2.5 py-1 text-xs font-bold text-red-700 transition hover:bg-red-50 disabled:opacity-40"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Supprimer la vidéo
+                    </button>
+                  )}
+                </div>
                 {candidatSelectionne.lien_video ? (
                   <div className="mt-2 flex items-center justify-between rounded-xl border border-blue-200 bg-blue-50 p-3">
                     <span className="text-xs text-blue-800 font-mono truncate max-w-sm">{candidatSelectionne.lien_video}</span>

@@ -66,7 +66,7 @@ export default function Elections() {
                 <div className="rounded-xl border border-white/15 bg-[#2b170e]/65 p-4 backdrop-blur-md">
                   <span className="text-xs font-bold uppercase tracking-wider text-caramel-300">1. Candidatures</span>
                   <p className="mt-1 text-sm font-semibold text-white">Ouvertes dès maintenant</p>
-                  <p className="mt-0.5 text-xs text-brun-200">Dépôt avec photo et vidéo</p>
+                  <p className="mt-0.5 text-xs text-brun-200">Photo obligatoire et vidéo de campagne</p>
                 </div>
                 <div className="rounded-xl border border-white/15 bg-[#2b170e]/65 p-4 backdrop-blur-md">
                   <span className="text-xs font-bold uppercase tracking-wider text-caramel-300">2. Campagne</span>

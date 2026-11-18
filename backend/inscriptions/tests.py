@@ -626,3 +626,39 @@ class CandidaturePosteTests(APITestCase):
             if c.photo:
                 c.photo.delete(save=False)
 
+    def test_backoffice_supprimer_video_candidature(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from .models import CandidaturePoste
+
+        video = SimpleUploadedFile("campagne.mp4", b"fake-mp4-data", content_type="video/mp4")
+        c = CandidaturePoste.objects.create(
+            poste="RESPONSABLE_COMMUNICATION",
+            nom="Fall",
+            prenom="Moussa",
+            email="moussa.video@isep.sn",
+            telephone="778889900",
+            departement="TIC",
+            metier="Développement Frontend",
+            profession_de_foi="Donner une forte visibilité digitale aux projets des étudiants.",
+            photo=self._creer_image(),
+            lien_video="https://youtu.be/campagne",
+            fichier_video=video,
+        )
+        try:
+            # Un anonyme ne peut pas supprimer la vidéo
+            r_anon = self.client.delete(f"/api/admin/candidatures/{c.id}/supprimer-video/")
+            self.assertEqual(r_anon.status_code, 401)
+
+            # L'admin supprime la vidéo tout en conservant la candidature
+            r_ok = self.client.delete(f"/api/admin/candidatures/{c.id}/supprimer-video/", **self.auth_headers)
+            self.assertEqual(r_ok.status_code, 200)
+            c.refresh_from_db()
+            self.assertFalse(bool(c.fichier_video))
+            self.assertEqual(c.lien_video, "")
+            self.assertTrue(CandidaturePoste.objects.filter(pk=c.pk).exists())
+        finally:
+            if c.photo:
+                c.photo.delete(save=False)
+            if c.fichier_video:
+                c.fichier_video.delete(save=False)
+
