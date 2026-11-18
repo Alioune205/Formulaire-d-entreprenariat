@@ -22,7 +22,7 @@ export default function Accueil() {
               Nouveau
             </span>
             <span>
-              <strong className="text-white">Élections du Club CIAT</strong> — Les candidatures aux 13 postes sont ouvertes (scrutin en ligne samedi).
+              <strong className="text-white">Élections du Club CIAT</strong> — Les candidatures aux 13 postes sont ouvertes en ligne sur la plateforme.
             </span>
           </p>
           <Link

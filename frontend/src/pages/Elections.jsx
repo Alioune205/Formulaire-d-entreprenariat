@@ -58,7 +58,7 @@ export default function Elections() {
               <p className="mt-4 text-base leading-relaxed text-brun-100 sm:text-lg">
                 Prenez part à la direction du club en postulant à l’un des 13 postes à pourvoir :
                 les 8 postes du Bureau Exécutif ou l’une des 5 Cellules Thématiques.
-                Le vote officiel des étudiants aura lieu en ligne ce samedi.
+                La date officielle du vote en ligne sera communiquée prochainement.
               </p>
 
               {/* Rappel des étapes clés */}
@@ -75,8 +75,8 @@ export default function Elections() {
                 </div>
                 <div className="rounded-xl border border-white/15 bg-[#2b170e]/65 p-4 backdrop-blur-md">
                   <span className="text-xs font-bold uppercase tracking-wider text-caramel-300">3. Scrutin</span>
-                  <p className="mt-1 text-sm font-semibold text-white">Samedi en ligne</p>
-                  <p className="mt-0.5 text-xs text-brun-200">Vote sécurisé par code e-mail</p>
+                  <p className="mt-1 text-sm font-semibold text-white">Prochainement en ligne</p>
+                  <p className="mt-0.5 text-xs text-brun-200">Date annoncée bientôt</p>
                 </div>
               </div>
             </div>

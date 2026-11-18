@@ -24,7 +24,7 @@ export default function MiseEnAvantElections() {
                   Candidatures ouvertes
                 </span>
                 <span className="rounded-full border border-white/25 bg-black/40 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
-                  Vote en ligne ce samedi
+                  Vote en ligne prochainement
                 </span>
               </div>
             </div>
@@ -42,7 +42,7 @@ export default function MiseEnAvantElections() {
 
                 <p className="mt-3 text-sm leading-relaxed text-brun-600 sm:text-base">
                   Suite au lancement officiel du Club d'Entrepreneuriat du CIAT, les étudiant(e)s peuvent dès
-                  maintenant postuler aux instances dirigeantes avant le scrutin en ligne de ce samedi.
+                  maintenant déposer leur candidature aux instances dirigeantes avant l’ouverture du vote en ligne.
                 </p>
 
                 <div className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -81,8 +81,8 @@ export default function MiseEnAvantElections() {
                       <CalendarCheck className="h-4 w-4" />
                     </div>
                     <div>
-                      <p className="text-xs font-extrabold uppercase tracking-wider text-brun-800">Scrutin samedi</p>
-                      <p className="mt-0.5 text-xs text-brun-600">Vote en ligne sécurisé sur ce site</p>
+                      <p className="text-xs font-extrabold uppercase tracking-wider text-brun-800">Scrutin en ligne</p>
+                      <p className="mt-0.5 text-xs text-brun-600">Date du vote annoncée prochainement</p>
                     </div>
                   </div>
                 </div>

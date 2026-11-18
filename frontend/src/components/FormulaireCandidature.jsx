@@ -174,7 +174,7 @@ export default function FormulaireCandidature({ posteInitial, onFermer, onSucces
               <p className="font-bold text-caramel-900">Prochaine étape :</p>
               <p className="mt-1 text-brun-700">
                 La commission électorale vérifiera la conformité de votre dossier. Dès validation, votre fiche de campagne
-                et votre photo apparaîtront sur l’isoloir numérique pour l’ouverture du scrutin en ligne ce samedi.
+                et votre photo apparaîtront sur l’isoloir numérique pour l’ouverture prochaine du scrutin en ligne.
               </p>
             </div>
             <button
