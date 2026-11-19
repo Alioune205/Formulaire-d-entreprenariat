@@ -20,6 +20,16 @@ export default function DiffusionWhatsApp({ onDeconnexion }) {
   const [echecs, setEchecs] = useState([]);
   const [termine, setTermine] = useState(false);
 
+  const formaterErreurChargement = (err) => {
+    if (err instanceof ErreurApi) {
+      if (err.status === 404) {
+        return 'Route WhatsApp introuvable côté serveur (HTTP 404) : sur PythonAnywhere, ouvrez l’onglet Web puis cliquez sur le bouton vert « Reload » après le git pull, ensuite réactualisez ici.';
+      }
+      return `Impossible de charger les données de diffusion WhatsApp (HTTP ${err.status} : ${err.message}).`;
+    }
+    return 'Serveur backend injoignable. Vérifiez votre connexion ou rechargez (Reload) l’application sur PythonAnywhere.';
+  };
+
   const chargerApercu = useCallback(async (lien) => {
     try {
       const a = await api('/admin/diffusion-whatsapp/apercu/', {
@@ -29,7 +39,8 @@ export default function DiffusionWhatsApp({ onDeconnexion }) {
       });
       setApercu(a);
     } catch (err) {
-      if (err instanceof ErreurApi && err.status === 401) onDeconnexion();
+      if (err instanceof ErreurApi && err.status === 401) return onDeconnexion();
+      setErreur((prec) => prec || formaterErreurChargement(err));
     }
   }, [onDeconnexion]);
 
@@ -46,7 +57,9 @@ export default function DiffusionWhatsApp({ onDeconnexion }) {
       await chargerApercu(lienInitial);
     } catch (err) {
       if (err instanceof ErreurApi && err.status === 401) return onDeconnexion();
-      setErreur('Impossible de charger les données de diffusion WhatsApp.');
+      setDonnees(null);
+      setApercu(null);
+      setErreur(formaterErreurChargement(err));
     } finally {
       setChargement(false);
     }
@@ -240,7 +253,7 @@ export default function DiffusionWhatsApp({ onDeconnexion }) {
           )}
 
           {/* Confirmation & Bouton d'envoi */}
-          {totalRestants > 0 ? (
+          {donnees && totalRestants > 0 ? (
             <div className="space-y-4 border-t border-brun-100 pt-4">
               <label className="flex items-start gap-3 rounded-xl border border-caramel-200 bg-caramel-50/50 p-3.5 text-xs leading-relaxed text-brun-800">
                 <input
@@ -273,16 +286,22 @@ export default function DiffusionWhatsApp({ onDeconnexion }) {
                 )}
               </button>
             </div>
-          ) : (
-            !chargement && (
-              <div className="flex items-center gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs font-semibold text-emerald-800">
-                <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
-                <span>
-                  Tous les responsables et candidats uniques actuels ont déjà reçu l’e-mail. Si de nouveaux étudiants s’inscrivent plus tard, actualisez pour n’envoyer qu’aux nouveaux.
-                </span>
-              </div>
-            )
-          )}
+          ) : !chargement && donnees ? (
+            <div className="flex items-center gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs font-semibold text-emerald-800">
+              <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
+              <span>
+                Tous les responsables et candidats uniques actuels ont déjà reçu l’e-mail. Si de nouveaux étudiants s’inscrivent plus tard, actualisez pour n’envoyer qu’aux nouveaux.
+              </span>
+            </div>
+          ) : !chargement ? (
+            <button
+              type="button"
+              onClick={charger}
+              className="btn-secondaire w-full justify-center"
+            >
+              <RefreshCw className="h-4 w-4" /> Réessayer le chargement
+            </button>
+          ) : null}
         </div>
 
         {/* Colonne droite : Aperçu réel du template HTML */}
@@ -292,9 +311,14 @@ export default function DiffusionWhatsApp({ onDeconnexion }) {
           </div>
           {apercu ? (
             <ApercuEmail apercu={apercu} />
-          ) : (
+          ) : chargement ? (
             <div className="flex h-64 items-center justify-center">
               <Loader2 className="h-6 w-6 animate-spin text-brun-400" />
+            </div>
+          ) : (
+            <div className="flex h-64 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-brun-200 bg-[#faf6f3] p-6 text-center text-xs text-brun-600">
+              <Mail className="h-6 w-6 text-brun-400" />
+              <p>Aperçu indisponible tant que le serveur backend n’a pas répondu.</p>
             </div>
           )}
         </div>

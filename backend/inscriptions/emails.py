@@ -329,7 +329,8 @@ def collecter_destinataires_whatsapp():
         canon = normaliser_email_canonique(email)
         if canon in uniques:
             continue
-        chef = ins.membres.order_by("id").first()
+        membres = sorted(ins.membres.all(), key=lambda m: m.id)
+        chef = membres[0] if membres else None
         nom_complet = f"{chef.prenom} {chef.nom}".strip() if chef else ins.nom_groupe
         uniques[canon] = {
             "email": email,
