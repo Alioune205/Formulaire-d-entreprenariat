@@ -21,10 +21,13 @@ from django.contrib.auth import authenticate
 from django.core.mail import get_connection, send_mail
 
 from .emails import (
-    apercu_acceptation, apercu_modele_acceptation, apres_reponse, envoyer_acceptation, envoyer_alerte_regeneration, envoyer_code,
-    envoyer_confirmation,
+    LIEN_WHATSAPP_DEFAUT, apercu_acceptation, apercu_modele_acceptation, apercu_whatsapp, apres_reponse,
+    collecter_destinataires_whatsapp, envoyer_acceptation, envoyer_alerte_regeneration, envoyer_code,
+    envoyer_confirmation, envoyer_whatsapp,
 )
-from .models import CandidaturePoste, CodeVerification, Inscription, Membre, ModeleEmail, ParametresPlateforme
+from .models import (
+    CandidaturePoste, CodeVerification, EnvoiDiffusion, Inscription, Membre, ModeleEmail, ParametresPlateforme,
+)
 from .genre import genre_effectif
 from .postes import POSTES_CATALOGUE
 from .recap import calculer_recap
@@ -263,6 +266,95 @@ def parametres_plateforme(request):
     return Response({
         "inscriptions_ouvertes": params.inscriptions_ouvertes,
         "modifie_le": params.modifie_le,
+    })
+
+
+@api_view(["GET", "POST"])
+@permission_classes([permissions.IsAdminUser])
+def apercu_diffusion_whatsapp(request):
+    """GET/POST /api/admin/diffusion-whatsapp/apercu/ — aperçu HTML exact sans envoyer d'e-mail."""
+    lien = str(request.data.get("lien_whatsapp", "") if request.method == "POST" else request.query_params.get("lien_whatsapp", "")).strip()
+    return Response(apercu_whatsapp(lien_whatsapp=lien or LIEN_WHATSAPP_DEFAUT))
+
+
+@api_view(["GET", "POST"])
+@permission_classes([permissions.IsAdminUser])
+def diffusion_whatsapp(request):
+    """GET/POST /api/admin/diffusion-whatsapp/ — envoi groupé dédoublonné du lien WhatsApp."""
+    collecte = collecter_destinataires_whatsapp()
+
+    if request.method == "GET":
+        historique = [
+            {"id": e.id, "nom": e.nom_destinataire, "email": e.email_brut, "envoye_le": e.envoye_le}
+            for e in EnvoiDiffusion.objects.filter(canal="WHATSAPP")[:100]
+        ]
+        return Response({
+            "lien_defaut": LIEN_WHATSAPP_DEFAUT,
+            "total_uniques": len(collecte["tous"]),
+            "deja_envoyes": collecte["deja_envoyes_count"],
+            "restants": len(collecte["restants"]),
+            "destinataires_restants": [
+                {"email": d["email"], "nom": d["nom"], "source": d["source"]}
+                for d in collecte["restants"]
+            ],
+            "historique": historique,
+        })
+
+    lien = str(request.data.get("lien_whatsapp") or LIEN_WHATSAPP_DEFAUT).strip()
+    if not lien.startswith(("https://chat.whatsapp.com/", "http://", "https://")):
+        return Response(
+            {"detail": "Indiquez un lien d'invitation WhatsApp valide commençant par https://."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        limite = max(1, min(int(request.data.get("limite", 10)), 20))
+    except (TypeError, ValueError):
+        limite = 10
+
+    lot = collecte["restants"][:limite]
+    envoyes, echecs = [], []
+    if lot:
+        connexion = get_connection()
+        try:
+            connexion.open()
+            for d in lot:
+                try:
+                    envoyer_whatsapp(d["email"], d["salutation"], lien_whatsapp=lien, connection=connexion)
+                except Exception as exc:  # noqa: BLE001
+                    logger.exception("Échec diffusion WhatsApp vers %s", d["email"])
+                    echecs.append({"email": d["email"], "nom": d["nom"], "erreur": type(exc).__name__})
+                    continue
+
+                EnvoiDiffusion.objects.get_or_create(
+                    canal="WHATSAPP",
+                    email_canonique=d["email_canonique"],
+                    defaults={
+                        "email_brut": d["email"],
+                        "nom_destinataire": d["nom"][:160],
+                        "telephone_normalise": d["telephone_normalise"],
+                    },
+                )
+                envoyes.append({"email": d["email"], "nom": d["nom"], "source": d["source"]})
+        except Exception:  # noqa: BLE001
+            logger.exception("Connexion SMTP impossible pour la diffusion WhatsApp")
+            return Response(
+                {"detail": "Impossible de se connecter au serveur d'e-mails."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        finally:
+            try:
+                connexion.close()
+            except Exception:  # noqa: BLE001
+                pass
+
+    apres = collecter_destinataires_whatsapp()
+    return Response({
+        "envoyes": envoyes,
+        "echecs": echecs,
+        "restants": len(apres["restants"]),
+        "deja_envoyes": apres["deja_envoyes_count"],
+        "total_uniques": len(apres["tous"]),
     })
 
 

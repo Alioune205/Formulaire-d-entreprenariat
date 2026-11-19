@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import CandidaturePoste, Inscription, Membre, ModeleEmail, ParametresPlateforme
+from .models import CandidaturePoste, EnvoiDiffusion, Inscription, Membre, ModeleEmail, ParametresPlateforme
 
 
 class MembreInline(admin.TabularInline):
@@ -40,4 +40,11 @@ class CandidaturePosteAdmin(admin.ModelAdmin):
 @admin.register(ParametresPlateforme)
 class ParametresPlateformeAdmin(admin.ModelAdmin):
     list_display = ("inscriptions_ouvertes", "modifie_le")
+
+
+@admin.register(EnvoiDiffusion)
+class EnvoiDiffusionAdmin(admin.ModelAdmin):
+    list_display = ("canal", "email_brut", "nom_destinataire", "envoye_le")
+    list_filter = ("canal", "envoye_le")
+    search_fields = ("email_brut", "email_canonique", "nom_destinataire")
 

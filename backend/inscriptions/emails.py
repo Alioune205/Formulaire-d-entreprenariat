@@ -13,7 +13,12 @@ from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 
-from .models import CodeVerification
+from .models import CandidaturePoste, CodeVerification, EnvoiDiffusion, Inscription
+from .utils import (
+    domaine_est_faute_frappe,
+    normaliser_email_canonique,
+    normaliser_telephone,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -249,3 +254,130 @@ def apercu_modele_acceptation(config=None):
         D(prenom="Fatou", nom="Ndiaye", metier="Analyse de Performance Digitale"),
     ]
     return apercu_acceptation(exemple, membres=membres, config=config)
+
+
+# --- Diffusion Lien WhatsApp officiel (sans doublons) ------------------------
+
+LIEN_WHATSAPP_DEFAUT = "https://chat.whatsapp.com/B9fvO74CedrJwrstzSCkWj?s=sw&p=i&iam=2"
+SUJET_WHATSAPP_DEFAUT = "Intégration au groupe WhatsApp officiel — Club d'Entrepreneuriat CIAT"
+
+
+def _message_whatsapp(destinataire_email, salutation, lien_whatsapp=None, connection=None):
+    lien = (lien_whatsapp or LIEN_WHATSAPP_DEFAUT).strip()
+    texte = (
+        f"{salutation}\n\n"
+        "Suite à la présentation officielle du Club d'Entrepreneuriat du CIAT à l'ISEP Amadou Trawaré, "
+        "nous vous invitons à rejoindre dès maintenant le groupe WhatsApp officiel de la cohorte 2026-2027.\n\n"
+        "Cet espace regroupera l'ensemble des informations utiles pour la suite : programme des ateliers, "
+        "accompagnement des projets, dépôt des candidatures et organisation des élections du club.\n\n"
+        f"Rejoindre le groupe WhatsApp :\n{lien}\n\n"
+        "Consigne aux responsables de groupe :\n"
+        "En tant que responsable, merci de bien vouloir partager ce lien avec tous les membres de votre groupe "
+        "afin que chacun puisse intégrer la communauté. (Merci de ne pas diffuser ce lien en dehors des étudiants inscrits au club.)\n\n"
+        "Rappels :\n"
+        "- Les candidatures aux 13 postes de gouvernance (Bureau Exécutif et Chefs de Cellules) restent ouvertes dans l'onglet Élections & Votes.\n"
+        "- Les inscriptions de projets sont également réouvertes dès 1 seul membre (individuel ou en groupe jusqu'à 6 membres).\n\n"
+        "Cordialement,"
+    )
+    contexte = {
+        "apercu": "Rejoignez le groupe WhatsApp officiel du Club d'Entrepreneuriat CIAT.",
+        "surtitre": "Cohorte 2026-2027 · Vie du Club",
+        "titre": "Rejoignez le groupe WhatsApp officiel du Club",
+        "salutation": salutation,
+        "lien_whatsapp": lien,
+    }
+    return _construire(destinataire_email, SUJET_WHATSAPP_DEFAUT, texte, "emails/whatsapp.html", contexte, connection)
+
+
+def envoyer_whatsapp(destinataire_email, salutation, lien_whatsapp=None, connection=None):
+    _message_whatsapp(destinataire_email, salutation, lien_whatsapp=lien_whatsapp, connection=connection).send(fail_silently=False)
+
+
+def apercu_whatsapp(lien_whatsapp=None):
+    import base64
+
+    msg = _message_whatsapp("membre.ciat@isep.sn", "Bonjour Awa Diop,", lien_whatsapp=lien_whatsapp)
+    html = msg.alternatives[0][0]
+    logo = "data:image/png;base64," + base64.b64encode(_logo_octets()).decode()
+    return {
+        "sujet": msg.subject,
+        "destinataire": "Tous les responsables de groupes & candidats (sans doublon)",
+        "html": html.replace("cid:logo-ciat", logo),
+    }
+
+
+def collecter_destinataires_whatsapp():
+    """Rassemble tous les destinataires uniques (responsables + candidats non rejetés), sans aucun doublon."""
+    deja_envoyes = EnvoiDiffusion.objects.filter(canal="WHATSAPP")
+    emails_deja = set(deja_envoyes.values_list("email_canonique", flat=True))
+    tels_deja = {t for t in deja_envoyes.values_list("telephone_normalise", flat=True) if t}
+
+    uniques = {}
+    tels_vus = set()
+
+    # 1. Responsables des groupes inscrits (non rejetés)
+    inscriptions = (
+        Inscription.objects.exclude(statut=Inscription.Statut.REJETE)
+        .exclude(email="")
+        .prefetch_related("membres")
+        .order_by("cree_le")
+    )
+    for ins in inscriptions:
+        email = (ins.email or "").strip().lower()
+        if not email or domaine_est_faute_frappe(email):
+            continue
+        canon = normaliser_email_canonique(email)
+        if canon in uniques:
+            continue
+        chef = ins.membres.order_by("id").first()
+        nom_complet = f"{chef.prenom} {chef.nom}".strip() if chef else ins.nom_groupe
+        uniques[canon] = {
+            "email": email,
+            "email_canonique": canon,
+            "nom": nom_complet,
+            "telephone_normalise": "",
+            "salutation": f"Bonjour {nom_complet}," if nom_complet else "Bonjour,",
+            "source": f"Groupe {ins.nom_groupe}",
+        }
+
+    # 2. Candidats aux élections (non rejetés)
+    candidats = (
+        CandidaturePoste.objects.exclude(statut=CandidaturePoste.Statut.REJETE)
+        .exclude(email="")
+        .order_by("cree_le")
+    )
+    for c in candidats:
+        email = (c.email or "").strip().lower()
+        if not email or domaine_est_faute_frappe(email):
+            continue
+        canon = normaliser_email_canonique(email)
+        tel_norm = normaliser_telephone(c.telephone)
+        if canon in uniques:
+            if tel_norm and not uniques[canon]["telephone_normalise"]:
+                uniques[canon]["telephone_normalise"] = tel_norm
+                tels_vus.add(tel_norm)
+            continue
+        if tel_norm and tel_norm in tels_vus:
+            continue
+        if tel_norm:
+            tels_vus.add(tel_norm)
+        nom_complet = f"{c.prenom} {c.nom}".strip()
+        uniques[canon] = {
+            "email": email,
+            "email_canonique": canon,
+            "nom": nom_complet,
+            "telephone_normalise": tel_norm,
+            "salutation": f"Bonjour {nom_complet}," if nom_complet else "Bonjour,",
+            "source": f"Candidat ({c.get_poste_display()})",
+        }
+
+    restants = [
+        d for canon, d in uniques.items()
+        if canon not in emails_deja
+        and not (d["telephone_normalise"] and d["telephone_normalise"] in tels_deja)
+    ]
+    return {
+        "tous": list(uniques.values()),
+        "restants": restants,
+        "deja_envoyes_count": deja_envoyes.count(),
+    }

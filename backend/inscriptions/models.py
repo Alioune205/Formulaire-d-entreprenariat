@@ -313,3 +313,25 @@ class ParametresPlateforme(models.Model):
         obj, _ = cls.objects.get_or_create(id=1, defaults={"inscriptions_ouvertes": True})
         return obj
 
+
+class EnvoiDiffusion(models.Model):
+    """Journal persistant des diffusions par e-mail pour empêcher tout envoi en double."""
+
+    canal = models.CharField("canal", max_length=40, default="WHATSAPP", db_index=True)
+    email_canonique = models.CharField("e-mail normalisé", max_length=254, db_index=True)
+    email_brut = models.EmailField("adresse destinataire", max_length=254)
+    nom_destinataire = models.CharField("nom du destinataire", max_length=160, blank=True)
+    telephone_normalise = models.CharField("téléphone normalisé", max_length=30, blank=True, db_index=True)
+    envoye_le = models.DateTimeField("envoyé le", auto_now_add=True)
+
+    class Meta:
+        ordering = ["-envoye_le"]
+        constraints = [
+            models.UniqueConstraint(fields=["canal", "email_canonique"], name="unique_diffusion_canal_email"),
+        ]
+        verbose_name = "envoi de diffusion"
+        verbose_name_plural = "envois de diffusion"
+
+    def __str__(self):
+        return f"[{self.canal}] {self.email_brut}"
+

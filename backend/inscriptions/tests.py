@@ -723,3 +723,121 @@ class CandidaturePosteTests(APITestCase):
         self.assertEqual(r_dup_gmail.status_code, 400)
         self.assertIn("email", r_dup_gmail.data)
 
+
+class DiffusionWhatsAppTests(APITestCase):
+    def setUp(self):
+        cache.clear()
+        self.admin = get_user_model().objects.create_superuser("admin_wa", "adminwa@ciat.sn", "secret123")
+        r = self.client.post("/api/admin/connexion/", {"username": "admin_wa", "password": "secret123"}, format="json")
+        self.auth_headers = {"HTTP_AUTHORIZATION": f"Token {r.data['token']}"}
+
+    def _creer_image(self):
+        import io
+        from PIL import Image
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        f = io.BytesIO()
+        Image.new("RGB", (50, 50), color="brown").save(f, "jpeg")
+        f.seek(0)
+        return SimpleUploadedFile("photo.jpg", f.read(), content_type="image/jpeg")
+
+    def test_diffusion_whatsapp_sans_aucun_doublon(self):
+        from .models import CandidaturePoste, EnvoiDiffusion
+
+        # 1. Deux groupes dont le 1er est accepté (chef Awa), le 2nd rejeté (ne doit pas recevoir)
+        ins1 = Inscription.objects.create(
+            nom_groupe="Les Pionniers",
+            nom_projet="EcoSol",
+            email="awa.diop@gmail.com",
+            description_projet="Solution solaire innovante pour l'agriculture.",
+            engagement=True,
+            statut=Inscription.Statut.ACCEPTE,
+        )
+        Membre.objects.create(inscription=ins1, nom="Diop", prenom="Awa", departement="TIC", metier="Développement Backend")
+
+        ins_rejet = Inscription.objects.create(
+            nom_groupe="Rejetés",
+            nom_projet="Autre",
+            email="rejet@exemple.sn",
+            description_projet="Projet non retenu.",
+            engagement=True,
+            statut=Inscription.Statut.REJETE,
+        )
+        Membre.objects.create(inscription=ins_rejet, nom="Rejet", prenom="Test", departement="TIC", metier="Développement Backend")
+
+        # 2. Candidats aux élections :
+        # - Awa postule aussi aux élections avec une variante Gmail (points/+tag) -> doublon, 1 seul envoi !
+        # - Adji a deux candidatures (une @gmail.com valide, une faute @gamil.com + même tel) -> 1 seul envoi sur @gmail.com !
+        c_awa = CandidaturePoste.objects.create(
+            poste="PRESIDENT",
+            nom="Diop",
+            prenom="Awa",
+            email="awadiop+vote@gmail.com",
+            telephone="771112233",
+            departement="TIC",
+            metier="Développement Backend",
+            profession_de_foi="Porter le club avec ambition.",
+            photo=self._creer_image(),
+        )
+        c_adji_ok = CandidaturePoste.objects.create(
+            poste="CHEF_CELLULE_AUTOMOBILE",
+            nom="Fall",
+            prenom="Adji",
+            email="adjifall@gmail.com",
+            telephone="789109712",
+            departement="Automobile",
+            metier="Technicien Supérieur en Carrosserie et Peinture Automobile",
+            profession_de_foi="Dynamiser la cellule automobile.",
+            photo=self._creer_image(),
+        )
+        c_adji_typo = CandidaturePoste.objects.create(
+            poste="RESPONSABLE_COMMUNICATION",
+            nom="Fall",
+            prenom="Adji",
+            email="adjifall@gamil.com",
+            telephone="789109712",
+            departement="Automobile",
+            metier="Technicien Supérieur en Carrosserie et Peinture Automobile",
+            profession_de_foi="Dynamiser la communication.",
+            photo=self._creer_image(),
+        )
+
+        try:
+            # Anonyme refusé
+            self.assertEqual(self.client.get("/api/admin/diffusion-whatsapp/").status_code, 401)
+
+            # Stats admin : exactement 2 destinataires uniques (Awa + Adji), rejeté et typo exclus
+            r_stats = self.client.get("/api/admin/diffusion-whatsapp/", **self.auth_headers)
+            self.assertEqual(r_stats.status_code, 200)
+            self.assertEqual(r_stats.data["total_uniques"], 2)
+            self.assertEqual(r_stats.data["restants"], 2)
+
+            # Aperçu HTML avec le lien exact
+            import html as html_lib
+            lien = "https://chat.whatsapp.com/B9fvO74CedrJwrstzSCkWj?s=sw&p=i&iam=2"
+            r_apercu = self.client.post("/api/admin/diffusion-whatsapp/apercu/", {"lien_whatsapp": lien}, format="json", **self.auth_headers)
+            self.assertEqual(r_apercu.status_code, 200)
+            self.assertIn(lien, html_lib.unescape(r_apercu.data["html"]))
+
+            # Envoi effectif -> exactement 2 e-mails envoyés
+            mail.outbox.clear()
+            r_envoi = self.client.post("/api/admin/diffusion-whatsapp/", {"lien_whatsapp": lien, "limite": 10}, format="json", **self.auth_headers)
+            self.assertEqual(r_envoi.status_code, 200)
+            self.assertEqual(len(r_envoi.data["envoyes"]), 2)
+            self.assertEqual(r_envoi.data["restants"], 0)
+            self.assertEqual(len(mail.outbox), 2)
+            destinataires_reels = {m.to[0] for m in mail.outbox}
+            self.assertEqual(destinataires_reels, {"awa.diop@gmail.com", "adjifall@gmail.com"})
+            self.assertIn(lien, mail.outbox[0].body)
+            self.assertEqual(EnvoiDiffusion.objects.filter(canal="WHATSAPP").count(), 2)
+
+            # Deuxième clic sur Envoyer -> 0 nouvel e-mail envoyé (anti-doublon garanti)
+            mail.outbox.clear()
+            r_re_envoi = self.client.post("/api/admin/diffusion-whatsapp/", {"lien_whatsapp": lien, "limite": 10}, format="json", **self.auth_headers)
+            self.assertEqual(r_re_envoi.status_code, 200)
+            self.assertEqual(len(r_re_envoi.data["envoyes"]), 0)
+            self.assertEqual(len(mail.outbox), 0)
+        finally:
+            for obj in (c_awa, c_adji_ok, c_adji_typo):
+                if obj.photo:
+                    obj.photo.delete(save=False)
+

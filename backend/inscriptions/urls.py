@@ -19,5 +19,7 @@ urlpatterns = [
     path("admin/connexion/", views.connexion_admin, name="admin-connexion"),
     path("admin/deconnexion/", views.deconnexion_admin, name="admin-deconnexion"),
     path("admin/parametres/", views.parametres_plateforme, name="admin-parametres"),
+    path("admin/diffusion-whatsapp/", views.diffusion_whatsapp, name="admin-diffusion-whatsapp"),
+    path("admin/diffusion-whatsapp/apercu/", views.apercu_diffusion_whatsapp, name="admin-diffusion-whatsapp-apercu"),
     path("", include(router.urls)),
 ]

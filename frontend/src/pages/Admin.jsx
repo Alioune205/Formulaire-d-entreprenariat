@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  AlertCircle, BarChart3, CheckCircle2, ChevronRight, ClipboardCheck, Download, Eye, List, Loader2, Lock, LogOut, Mail, RefreshCw, Save, Search,
+  AlertCircle, BarChart3, CheckCircle2, ChevronRight, ClipboardCheck, Download, Eye, List, Loader2, Lock, LogOut, Mail, MessageSquare, RefreshCw, Save, Search,
   Trash2, Unlock, Users, Vote, X,
 } from 'lucide-react';
 import { api, ErreurApi, telechargerCsv, tokenAdmin } from '../lib/api.js';
 import Entretiens from '../components/admin/Entretiens.jsx';
 import CandidaturesPostes from '../components/admin/CandidaturesPostes.jsx';
+import DiffusionWhatsApp from '../components/admin/DiffusionWhatsApp.jsx';
 import Recap from '../components/admin/Recap.jsx';
 import { ApercuEmail } from '../components/admin/EnvoiFelicitations.jsx';
 
@@ -413,11 +414,12 @@ function TableauDeBord({ onDeconnexion }) {
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <h1 className="text-2xl font-extrabold text-brun-800">Club d'Entrepreneuriat — back-office</h1>
-          <div className="inline-flex rounded-xl border border-brun-100 bg-white p-1" role="tablist">
+          <div className="inline-flex flex-wrap rounded-xl border border-brun-100 bg-white p-1" role="tablist">
             {[
               ['inscriptions', 'Inscriptions', List],
               ['entretiens', 'Entretiens', ClipboardCheck],
               ['candidatures', 'Candidatures Postes', Vote],
+              ['whatsapp', 'WhatsApp', MessageSquare],
               ['recap', 'Récapitulatif', BarChart3],
             ].map(([id, libelle, Icone]) => (
               <button
@@ -442,6 +444,8 @@ function TableauDeBord({ onDeconnexion }) {
           <div className="mt-6"><Entretiens onDeconnexion={onDeconnexion} onMajStats={charger} /></div>
         ) : onglet === 'candidatures' ? (
           <div className="mt-6"><CandidaturesPostes onDeconnexion={onDeconnexion} /></div>
+        ) : onglet === 'whatsapp' ? (
+          <div className="mt-6"><DiffusionWhatsApp onDeconnexion={onDeconnexion} /></div>
         ) : (<>
 
         {inscriptionsOuvertes !== null && (
