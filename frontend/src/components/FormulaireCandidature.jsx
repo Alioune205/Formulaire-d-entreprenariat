@@ -22,7 +22,7 @@ export default function FormulaireCandidature({ posteInitial, onFermer, onSucces
   const photoInputRef = useRef(null);
 
   // Vidéo : mode lien ou mode fichier
-  const [modeVideo, setModeVideo] = useState('lien'); // 'lien' ou 'fichier'
+  const [modeVideo, setModeVideo] = useState('fichier'); // 'fichier' (par défaut, envoi direct) ou 'lien'
   const [lienVideo, setLienVideo] = useState('');
   const [videoFichier, setVideoFichier] = useState(null);
   const videoInputRef = useRef(null);
@@ -475,17 +475,17 @@ export default function FormulaireCandidature({ posteInitial, onFermer, onSucces
                 <div className="flex rounded-lg border border-brun-200 bg-white p-0.5 text-xs font-semibold">
                   <button
                     type="button"
-                    onClick={() => setModeVideo('lien')}
-                    className={`rounded-md px-2.5 py-1 transition ${modeVideo === 'lien' ? 'bg-caramel-500 text-white' : 'text-brun-600 hover:text-brun-900'}`}
-                  >
-                    Lien vidéo
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => setModeVideo('fichier')}
                     className={`rounded-md px-2.5 py-1 transition ${modeVideo === 'fichier' ? 'bg-caramel-500 text-white' : 'text-brun-600 hover:text-brun-900'}`}
                   >
-                    Fichier vidéo
+                    Envoyer ma vidéo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setModeVideo('lien')}
+                    className={`rounded-md px-2.5 py-1 transition ${modeVideo === 'lien' ? 'bg-caramel-500 text-white' : 'text-brun-600 hover:text-brun-900'}`}
+                  >
+                    Ou un lien
                   </button>
                 </div>
               </div>
@@ -529,10 +529,13 @@ export default function FormulaireCandidature({ posteInitial, onFermer, onSucces
                     <button
                       type="button"
                       onClick={() => videoInputRef.current?.click()}
-                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-caramel-400 bg-white px-4 py-3 text-xs font-bold text-brun-800 hover:bg-caramel-50/50"
+                      className="flex w-full flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-caramel-400 bg-white px-4 py-6 text-center transition hover:border-caramel-500 hover:bg-caramel-50/50"
                     >
-                      <Film className="h-4 w-4 text-caramel-600" />
-                      Choisir un fichier vidéo (max {configVideo.maxMo} Mo)
+                      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-caramel-500 text-white">
+                        <Film className="h-5 w-5" />
+                      </span>
+                      <span className="text-sm font-extrabold text-brun-900">Choisir ma vidéo depuis mon téléphone ou mon ordinateur</span>
+                      <span className="text-[11px] text-brun-500">MP4, WebM ou MOV · {configVideo.maxMo} Mo maximum · l'envoi démarre tout de suite</span>
                     </button>
                   ) : (
                     <div className="rounded-xl border border-brun-200 bg-white p-3">
