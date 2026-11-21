@@ -50,6 +50,21 @@ def inscriptions_ouvertes():
     return ParametresPlateforme.obtenir().inscriptions_ouvertes
 
 
+def date_limite_candidatures():
+    return datetime.fromisoformat(settings.DATE_LIMITE_CANDIDATURES)
+
+
+def candidatures_ouvertes():
+    return timezone.now() <= date_limite_candidatures()
+
+
+def reponse_candidatures_closes():
+    return Response(
+        {"detail": "Le dépôt des candidatures aux élections est clos.", "code": "candidatures_closes"},
+        status=status.HTTP_403_FORBIDDEN,
+    )
+
+
 @api_view(["GET"])
 @permission_classes([permissions.AllowAny])
 def infos_publiques(request):
@@ -58,6 +73,8 @@ def infos_publiques(request):
         "date_limite": date_limite().isoformat(),
         "maintenant": timezone.now().isoformat(),
         "inscriptions_ouvertes": inscriptions_ouvertes(),
+        "date_limite_candidatures": date_limite_candidatures().isoformat(),
+        "candidatures_ouvertes": candidatures_ouvertes(),
         # Vidéos de campagne : envoi direct vers Cloudflare R2 si configuré
         "video_envoi_direct": stockage_r2.configure(),
         "video_taille_max_mo": settings.R2_VIDEO_TAILLE_MAX_MO if stockage_r2.configure() else 25,
@@ -99,6 +116,8 @@ def autorisation_video(request):
     navigateur vers Cloudflare R2. L'URL n'accepte que ce type et cette taille exacte de
     fichier. Le jeton signé renvoyé est à joindre au formulaire de candidature.
     """
+    if not candidatures_ouvertes():
+        return reponse_candidatures_closes()
     if not stockage_r2.configure():
         return Response({"detail": "L'envoi direct de vidéo n'est pas configuré.", "code": "r2_non_configure"},
                         status=status.HTTP_503_SERVICE_UNAVAILABLE)
@@ -655,6 +674,11 @@ class CandidaturePostePubliqueView(generics.CreateAPIView):
     permission_classes = [permissions.AllowAny]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
     serializer_class = CandidaturePostePublicSerializer
+
+    def create(self, request, *args, **kwargs):
+        if not candidatures_ouvertes():
+            return reponse_candidatures_closes()
+        return super().create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         candidature = serializer.save()

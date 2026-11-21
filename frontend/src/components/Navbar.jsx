@@ -23,8 +23,8 @@ export default function Navbar() {
             <span>Élections</span>
             <span className="hidden md:inline">& Votes</span>
           </NavLink>
-          <a href="/#presentation" className="hidden rounded-lg px-3 py-2 text-brun-700 hover:bg-brun-50 md:block">
-            Présentation
+          <a href="/#elections-une" className="hidden rounded-lg px-3 py-2 text-brun-700 hover:bg-brun-50 md:block">
+            Les 13 postes
           </a>
           <NavLink
             to="/suivi"

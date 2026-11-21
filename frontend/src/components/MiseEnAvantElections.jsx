@@ -1,105 +1,101 @@
-import { ArrowRight, Award, CalendarCheck, Camera, Users, Vote } from 'lucide-react';
+import { ArrowRight, Camera, ChevronRight, Clock, FileText, Vote } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { POSTES } from '../lib/postes.js';
+import { formatDateLimite } from '../lib/useDateLimite.js';
 
-export default function MiseEnAvantElections() {
+const BUREAU = POSTES.filter((p) => p.categorie === 'Bureau Exécutif');
+const CELLULES = POSTES.filter((p) => p.categorie !== 'Bureau Exécutif');
+
+const ETAPES = [
+  { icone: Vote, titre: 'Choisissez un poste', texte: 'Parmi les 13 postes ci-dessous.' },
+  { icone: Camera, titre: 'Ajoutez une photo', texte: 'Pour que les électeurs vous reconnaissent.' },
+  { icone: FileText, titre: 'Motivations et vidéo', texte: 'Quelques lignes et 1 à 2 min de vidéo au téléphone.' },
+];
+
+function TuilePoste({ poste, ouvert }) {
+  return (
+    <Link
+      to={ouvert ? `/elections?poste=${poste.code}` : '/elections'}
+      className="group flex items-center justify-between gap-2 rounded-xl border border-brun-100 bg-white px-3.5 py-3 text-sm font-bold text-brun-800 shadow-sm transition hover:-translate-y-0.5 hover:border-caramel-400 hover:shadow-md"
+    >
+      <span className="min-w-0">{poste.titre}</span>
+      <ChevronRight className="h-4 w-4 shrink-0 text-caramel-500 transition group-hover:translate-x-0.5" />
+    </Link>
+  );
+}
+
+export default function MiseEnAvantElections({ temps }) {
+  const { elections } = temps;
   return (
     <section
       id="elections-une"
-      className="relative overflow-hidden border-b border-brun-100 bg-gradient-to-b from-white via-[#faf6f3] to-white py-12 sm:py-16"
+      className="relative scroll-mt-16 overflow-hidden border-b border-brun-100 bg-gradient-to-b from-white via-[#faf6f3] to-white py-12 sm:py-16"
     >
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        <div className="overflow-hidden rounded-3xl border border-caramel-200/80 bg-white shadow-xl shadow-brun-900/10">
-          <div className="grid lg:grid-cols-[1.2fr_1fr] lg:items-stretch">
-            {/* Visuel à gauche */}
-            <div className="relative min-h-[260px] overflow-hidden bg-[#2b170e] sm:min-h-[340px]">
-              <img
-                src="/hero-elections.jpeg"
-                alt="Élections et gouvernance du Club d'Entrepreneuriat CIAT"
-                className="h-full w-full object-cover object-right transition-transform duration-700 hover:scale-[1.02]"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#2b170e]/90 via-[#2b170e]/20 to-transparent" />
-              <div className="absolute bottom-4 left-4 right-4 flex flex-wrap items-center justify-between gap-2">
-                <span className="inline-flex items-center gap-2 rounded-full bg-caramel-500 px-3.5 py-1 text-xs font-extrabold uppercase tracking-wider text-white shadow">
-                  <span className="h-2 w-2 animate-pulse rounded-full bg-white" />
-                  Candidatures ouvertes
-                </span>
-                <span className="rounded-full border border-white/25 bg-black/40 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
-                  Vote en ligne prochainement
-                </span>
-              </div>
+        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
+          <div className="max-w-2xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-caramel-200 bg-caramel-50 px-3.5 py-1 text-xs font-extrabold uppercase tracking-widest text-caramel-800">
+              <Vote className="h-3.5 w-3.5" /> À la une · Élections 2026-2027
             </div>
+            <h2 className="mt-4 text-2xl font-extrabold leading-tight tracking-tight text-brun-900 sm:text-4xl">
+              {elections.ouvert ? 'Choisissez votre poste et déposez votre candidature' : 'Les 13 postes des élections du club'}
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-brun-600 sm:text-base">
+              Le club sera dirigé par les étudiant(e)s élu(e)s. Chaque étudiant(e) de l'ISEP peut se présenter à
+              un poste. Cliquez sur un poste pour ouvrir directement le formulaire.
+            </p>
+          </div>
+          {elections.ouvert && (
+            <p className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-caramel-300 bg-caramel-50 px-4 py-3 text-sm font-bold text-brun-800">
+              <Clock className="h-4 w-4 text-caramel-600" />
+              Clôture : {formatDateLimite(elections.dateLimite)}
+            </p>
+          )}
+        </div>
 
-            {/* Contenu à droite */}
-            <div className="flex flex-col justify-between p-6 sm:p-8 lg:p-10">
-              <div>
-                <div className="inline-flex items-center gap-2 rounded-full border border-caramel-200 bg-caramel-50 px-3.5 py-1 text-xs font-extrabold uppercase tracking-widest text-caramel-800">
-                  <Vote className="h-3.5 w-3.5" /> À la une · Élections & Votes 2026-2027
-                </div>
-
-                <h2 className="mt-4 text-2xl font-extrabold leading-tight tracking-tight text-brun-900 sm:text-3xl">
-                  Élections & Votes du Club : déposez votre candidature officielle
-                </h2>
-
-                <p className="mt-3 text-sm leading-relaxed text-brun-600 sm:text-base">
-                  Suite au lancement officiel du Club d'Entrepreneuriat du CIAT, les étudiant(e)s peuvent dès
-                  maintenant déposer leur candidature aux instances dirigeantes avant l’ouverture du vote en ligne.
-                </p>
-
-                <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                  <div className="flex items-start gap-3 rounded-2xl border border-brun-100 bg-[#faf6f3] p-3.5">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brun-800 text-caramel-300">
-                      <Award className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-extrabold uppercase tracking-wider text-brun-800">Bureau Exécutif</p>
-                      <p className="mt-0.5 text-xs text-brun-600">8 postes de direction et coordination</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3 rounded-2xl border border-brun-100 bg-[#faf6f3] p-3.5">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brun-800 text-caramel-300">
-                      <Users className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-extrabold uppercase tracking-wider text-brun-800">5 Cellules</p>
-                      <p className="mt-0.5 text-xs text-brun-600">TIC, Auto, Énergie, Santé, Femmes</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3 rounded-2xl border border-brun-100 bg-[#faf6f3] p-3.5">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brun-800 text-caramel-300">
-                      <Camera className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-extrabold uppercase tracking-wider text-brun-800">Dossier complet</p>
-                      <p className="mt-0.5 text-xs text-brun-600">Photo obligatoire + vidéo de campagne</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3 rounded-2xl border border-brun-100 bg-[#faf6f3] p-3.5">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brun-800 text-caramel-300">
-                      <CalendarCheck className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-extrabold uppercase tracking-wider text-brun-800">Scrutin en ligne</p>
-                      <p className="mt-0.5 text-xs text-brun-600">Date du vote annoncée prochainement</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <Link
-                  to="/elections"
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-caramel-500 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-caramel-500/25 transition hover:-translate-y-0.5 hover:bg-caramel-600"
-                >
-                  <Vote className="h-4 w-4" />
-                  Accéder aux 13 postes, candidatures et votes
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </div>
+        <div className="mt-8 grid gap-6 lg:grid-cols-2">
+          <div className="rounded-3xl border border-caramel-200/80 bg-[#faf6f3] p-5 sm:p-6">
+            <p className="text-xs font-extrabold uppercase tracking-widest text-caramel-800">Bureau Exécutif · {BUREAU.length} postes</p>
+            <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
+              {BUREAU.map((p) => <TuilePoste key={p.code} poste={p} ouvert={elections.ouvert} />)}
             </div>
           </div>
+          <div className="flex flex-col gap-6">
+            <div className="rounded-3xl border border-caramel-200/80 bg-[#faf6f3] p-5 sm:p-6">
+              <p className="text-xs font-extrabold uppercase tracking-widest text-caramel-800">Cellules Thématiques · {CELLULES.length} postes</p>
+              <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
+                {CELLULES.map((p) => <TuilePoste key={p.code} poste={p} ouvert={elections.ouvert} />)}
+              </div>
+            </div>
+
+            <div className="rounded-3xl bg-[#2b170e] p-5 text-white sm:p-6">
+              <p className="text-xs font-extrabold uppercase tracking-widest text-caramel-300">Candidater en 3 étapes</p>
+              <ol className="mt-4 grid gap-3 sm:grid-cols-3">
+                {ETAPES.map(({ icone: Icone, titre, texte }) => (
+                  <li key={titre} className="flex items-start gap-3 sm:flex-col sm:gap-2">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-caramel-500">
+                      <Icone className="h-4 w-4" />
+                    </span>
+                    <span>
+                      <span className="block text-sm font-bold">{titre}</span>
+                      <span className="mt-0.5 block text-xs text-brun-200">{texte}</span>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-8 flex justify-center">
+          <Link
+            to="/elections"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-caramel-500 px-7 py-4 text-sm font-bold text-white shadow-lg shadow-caramel-500/25 transition hover:-translate-y-0.5 hover:bg-caramel-600 sm:text-base"
+          >
+            <Vote className="h-5 w-5" />
+            {elections.ouvert ? 'Voir les postes et candidater' : 'Voir la page des élections'}
+            <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
       </div>
     </section>

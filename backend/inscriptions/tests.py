@@ -457,7 +457,20 @@ class BackOfficeTests(APITestCase):
         self.assertIn("Mercredi 18 novembre 2026", r.data["date_rencontre"])
 
 
+@override_settings(DATE_LIMITE_CANDIDATURES="2099-12-31T23:59:59+00:00")
 class CandidaturePosteTests(APITestCase):
+    def test_candidatures_closes_apres_la_date_limite(self):
+        with override_settings(DATE_LIMITE_CANDIDATURES="2020-01-01T00:00:00+00:00"):
+            infos = self.client.get("/api/infos/").data
+            self.assertFalse(infos["candidatures_ouvertes"])
+            r = self.client.post("/api/candidatures/", {"nom": "Diop"}, format="json")
+            self.assertEqual(r.status_code, 403)
+            self.assertEqual(r.data["code"], "candidatures_closes")
+            r = self.client.post("/api/candidatures/video/autorisation/",
+                                 {"nom_fichier": "v.mp4", "type": "video/mp4", "taille": 1000}, format="json")
+            self.assertEqual(r.status_code, 403)
+        self.assertTrue(self.client.get("/api/infos/").data["candidatures_ouvertes"])
+
     def setUp(self):
         cache.clear()
         self.admin = get_user_model().objects.create_superuser("admin_elections", "admin@ciat.sn", "secret123")
@@ -847,6 +860,7 @@ R2_TEST = dict(R2_ACCOUNT_ID="0123456789abcdef0123456789abcdef", R2_ACCESS_KEY_I
                R2_SECRET_ACCESS_KEY="secret-test", R2_BUCKET="ciat-videos", R2_VIDEO_TAILLE_MAX_MO=100)
 
 
+@override_settings(DATE_LIMITE_CANDIDATURES="2099-12-31T23:59:59+00:00")
 class VideoR2Tests(APITestCase):
     """Envoi direct des vidéos de campagne du navigateur vers Cloudflare R2."""
 

@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Award, Briefcase, Calendar, CheckCircle2, ChevronRight, Filter, ShieldCheck, Users, Vote } from 'lucide-react';
 import Navbar from '../components/Navbar.jsx';
 import Footer from '../components/Footer.jsx';
 import FormulaireCandidature from '../components/FormulaireCandidature.jsx';
+import { CompteAReboursElections } from '../components/CompteARebours.jsx';
+import useDateLimite, { formatJourLimite } from '../lib/useDateLimite.js';
 import { POSTES } from '../lib/postes.js';
 import { api } from '../lib/api.js';
 
@@ -11,6 +14,20 @@ export default function Elections() {
   const [posteSelectionne, setPosteSelectionne] = useState(null);
   const [modalOuverte, setModalOuverte] = useState(false);
   const [postesApi, setPostesApi] = useState(POSTES);
+  const { elections } = useDateLimite();
+  const [params, setParams] = useSearchParams();
+
+  // Lien direct depuis l'accueil : /elections?poste=PRESIDENT ouvre le formulaire de ce poste.
+  useEffect(() => {
+    const code = params.get('poste');
+    if (!code) return;
+    const poste = POSTES.find((p) => p.code === code);
+    if (poste && elections.ouvert) {
+      setPosteSelectionne(poste);
+      setModalOuverte(true);
+    }
+    setParams({}, { replace: true });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const chargerPostes = () => {
     api('/candidatures/postes/')
@@ -61,11 +78,17 @@ export default function Elections() {
                 La date officielle du vote en ligne sera communiquée prochainement.
               </p>
 
+              <div className="mt-6">
+                <CompteAReboursElections elections={elections} variante="sombre" />
+              </div>
+
               {/* Rappel des étapes clés */}
               <div className="mt-8 grid gap-3 sm:grid-cols-3">
                 <div className="rounded-xl border border-white/15 bg-[#2b170e]/65 p-4 backdrop-blur-md">
                   <span className="text-xs font-bold uppercase tracking-wider text-caramel-300">1. Candidatures</span>
-                  <p className="mt-1 text-sm font-semibold text-white">Ouvertes dès maintenant</p>
+                  <p className="mt-1 text-sm font-semibold text-white">
+                    {elections.ouvert ? `Jusqu'au ${formatJourLimite(elections.dateLimite)}` : 'Dépôt clos'}
+                  </p>
                   <p className="mt-0.5 text-xs text-brun-200">Photo obligatoire et vidéo de campagne</p>
                 </div>
                 <div className="rounded-xl border border-white/15 bg-[#2b170e]/65 p-4 backdrop-blur-md">
@@ -170,13 +193,17 @@ export default function Elections() {
 
                 {/* Bouton d'action */}
                 <div className="mt-6 pt-4 border-t border-brun-50">
-                  <button
-                    type="button"
-                    onClick={() => ouvrirFormulaire(poste)}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-brun-800 py-3 text-xs font-bold text-white transition hover:bg-caramel-500"
-                  >
-                    Postuler à ce poste <ChevronRight className="h-4 w-4" />
-                  </button>
+                  {elections.ouvert ? (
+                    <button
+                      type="button"
+                      onClick={() => ouvrirFormulaire(poste)}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-brun-800 py-3 text-xs font-bold text-white transition hover:bg-caramel-500"
+                    >
+                      Postuler à ce poste <ChevronRight className="h-4 w-4" />
+                    </button>
+                  ) : (
+                    <p className="rounded-xl bg-brun-50 py-3 text-center text-xs font-bold text-brun-500">Dépôt des candidatures clos</p>
+                  )}
                 </div>
               </div>
             ))}

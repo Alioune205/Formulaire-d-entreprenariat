@@ -1,23 +1,24 @@
 import { useEffect, useState } from 'react';
-import { ArrowRight, FileSearch, Lightbulb, Network, Target, Users, Vote } from 'lucide-react';
+import { ArrowRight, Award, FileSearch, Megaphone, Users, Vote } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import CompteARebours from './CompteARebours.jsx';
+import { CompteAReboursElections } from './CompteARebours.jsx';
 
 const DIAPOS = [
-  { src: '/hero.jpeg', alt: 'Étudiants du CIAT travaillant ensemble à l’incubateur', position: 'object-[30%_center]', legende: 'Incubateur CIAT' },
   { src: '/hero-elections.jpeg', alt: 'Élections de gouvernance du Club d’Entrepreneuriat CIAT', position: 'object-[70%_center]', legende: 'Élections & Gouvernance' },
+  { src: '/hero.jpeg', alt: 'Étudiants du CIAT travaillant ensemble à l’incubateur', position: 'object-[30%_center]', legende: 'Incubateur CIAT' },
   { src: '/hero-atelier.jpeg', alt: 'Étudiants du CIAT en atelier automobile', position: 'object-[40%_center]', legende: 'Atelier automobile' },
 ];
 const DUREE = 6000;
 
 const PILIERS = [
-  { icone: Lightbulb, texte: 'Innovation' },
-  { icone: Users, texte: 'Accompagnement' },
-  { icone: Network, texte: 'Réseau' },
-  { icone: Target, texte: 'Impact' },
+  { icone: Award, texte: '8 postes au Bureau' },
+  { icone: Users, texte: '5 Cellules' },
+  { icone: Megaphone, texte: 'Vidéo de campagne' },
+  { icone: Vote, texte: 'Vote en ligne' },
 ];
 
 export default function Hero({ temps }) {
+  const { elections } = temps;
   const [diapos, setDiapos] = useState(DIAPOS);
   const [actif, setActif] = useState(0);
 
@@ -57,25 +58,26 @@ export default function Hero({ temps }) {
         <div className="max-w-2xl">
           <span className="inline-flex items-center gap-2 rounded-full border border-caramel-300/40 bg-caramel-500/15 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider text-caramel-200">
             <span className="h-2 w-2 animate-pulse rounded-full bg-caramel-400" />
-            {temps.ouvert ? 'Inscriptions réouvertes • Dès 1 membre' : 'Élections ouvertes • Gouvernance 2026-2027'}
+            {elections.ouvert ? 'Élections 2026-2027 • Candidatures prolongées' : 'Élections 2026-2027 • Candidatures closes'}
           </span>
 
           <h1 className="mt-6 text-4xl font-extrabold leading-[1.1] tracking-tight text-white sm:text-5xl lg:text-6xl">
-            Club d'Entrepreneuriat
-            <span className="block text-caramel-300">de l'idée au prototype, puis à l'impact.</span>
+            Élections du Club d'Entrepreneuriat
+            <span className="block text-caramel-300">13 postes à pourvoir. Pourquoi pas vous ?</span>
           </h1>
 
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-brun-100">
-            Le Centre d'Innovation, d'Application et de Transfert de l'ISEP Amadou Trawaré accompagne les étudiants — seul(e) ou en groupe — qui veulent construire un projet concret.
+            Présidence, Bureau Exécutif ou chef d'une des 5 Cellules Thématiques : prenez la tête du club du CIAT.
+            Dépôt en quelques minutes avec une photo, vos motivations et une courte vidéo de campagne.
           </p>
 
           <div className="mt-8">
-            <CompteARebours temps={temps} variante="sombre" />
+            <CompteAReboursElections elections={elections} variante="sombre" />
           </div>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <Link to="/elections" className="inline-flex items-center justify-center gap-2 rounded-xl bg-caramel-500 px-6 py-3.5 font-bold text-white shadow-xl shadow-black/20 transition hover:-translate-y-0.5 hover:bg-caramel-400">
-              <Vote className="h-5 w-5" /> Élections & Votes <ArrowRight className="h-4 w-4" />
+              <Vote className="h-5 w-5" /> {elections.ouvert ? 'Je me porte candidat(e)' : 'Voir les élections'} <ArrowRight className="h-4 w-4" />
             </Link>
             {temps.ouvert ? (
               <a href="#inscription" className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 py-3.5 font-bold text-brun-900 shadow-xl shadow-black/20 transition hover:-translate-y-0.5 hover:bg-caramel-50">

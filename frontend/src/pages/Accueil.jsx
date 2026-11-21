@@ -6,7 +6,7 @@ import PresentationAujourdhui from '../components/PresentationAujourdhui.jsx';
 import MiseEnAvantElections from '../components/MiseEnAvantElections.jsx';
 import FormulaireInscription from '../components/FormulaireInscription.jsx';
 import Footer from '../components/Footer.jsx';
-import useDateLimite from '../lib/useDateLimite.js';
+import useDateLimite, { formatJourLimite } from '../lib/useDateLimite.js';
 
 export default function Accueil() {
   const temps = useDateLimite();
@@ -20,7 +20,14 @@ export default function Accueil() {
               <Vote className="h-3 w-3" /> Élections & Votes
             </span>
             <span>
-              <strong className="text-white">Candidatures aux 13 postes ouvertes</strong> — Et suite à la présentation d'aujourd'hui, inscriptions réouvertes dès 1 membre.
+              {temps.elections.ouvert ? (
+                <>
+                  <strong className="text-white">Candidatures prolongées jusqu'au {formatJourLimite(temps.elections.dateLimite)}</strong>
+                  {' '}— 13 postes à pourvoir au Bureau et dans les Cellules.
+                </>
+              ) : (
+                <strong className="text-white">Le dépôt des candidatures aux élections est clos.</strong>
+              )}
             </span>
           </p>
           <div className="flex items-center gap-4">
@@ -28,7 +35,7 @@ export default function Accueil() {
               to="/elections"
               className="inline-flex items-center gap-1 font-bold text-caramel-300 transition hover:text-caramel-200"
             >
-              Élections & Votes <ArrowRight className="h-3.5 w-3.5" />
+              {temps.elections.ouvert ? 'Je candidate' : 'Élections & Votes'} <ArrowRight className="h-3.5 w-3.5" />
             </Link>
             {temps.ouvert && (
               <a
@@ -43,8 +50,9 @@ export default function Accueil() {
       </div>
       <main>
         <Hero temps={temps} />
-        <MiseEnAvantElections />
-        <PresentationAujourdhui temps={temps} />
+        <MiseEnAvantElections temps={temps} />
+        {/* Annonce de réouverture des inscriptions : seulement tant qu'elles sont ouvertes */}
+        {temps.ouvert && <PresentationAujourdhui temps={temps} />}
         <FormulaireInscription temps={temps} />
       </main>
       <Footer />
