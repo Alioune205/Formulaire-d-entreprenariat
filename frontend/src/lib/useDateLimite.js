@@ -3,7 +3,7 @@ import { api } from './api.js';
 
 // Valeurs de secours si l'API est injoignable.
 const DATE_LIMITE_SECOURS = '2026-11-14T23:59:59+00:00';
-const DATE_CANDIDATURES_SECOURS = '2026-11-24T23:59:59+00:00';
+const DATE_CANDIDATURES_SECOURS = '2026-11-23T23:00:00+00:00';
 
 const decouper = (restant) => ({
   aCompteARebours: restant > 0,
