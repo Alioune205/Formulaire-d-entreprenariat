@@ -268,6 +268,9 @@ class CandidaturePoste(models.Model):
     # Vidéo de campagne : soit un lien externe (Drive, YouTube, etc.), soit un court fichier
     lien_video = models.URLField("lien vidéo de présentation", blank=True, max_length=500)
     fichier_video = models.FileField("fichier vidéo court", upload_to="candidatures/videos/", blank=True, null=True)
+    # Vidéo envoyée directement du navigateur vers Cloudflare R2 (clé de l'objet dans le bucket).
+    # Le fichier ne transite pas par le serveur ; fichier_video reste pour les anciennes candidatures.
+    video_r2_cle = models.CharField("vidéo (clé Cloudflare R2)", max_length=300, blank=True)
 
     statut = models.CharField(
         "statut de candidature",

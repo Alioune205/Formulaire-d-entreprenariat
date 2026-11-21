@@ -9,7 +9,7 @@ from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from .genre import estimer_genre
-from .models import CodeVerification, Inscription, Membre
+from .models import CandidaturePoste, CodeVerification, Inscription, Membre
 
 PAYLOAD = {
     "nom_groupe": "Les Bâtisseurs",
@@ -841,3 +841,128 @@ class DiffusionWhatsAppTests(APITestCase):
                 if obj.photo:
                     obj.photo.delete(save=False)
 
+
+
+R2_TEST = dict(R2_ACCOUNT_ID="0123456789abcdef0123456789abcdef", R2_ACCESS_KEY_ID="AKIATEST",
+               R2_SECRET_ACCESS_KEY="secret-test", R2_BUCKET="ciat-videos", R2_VIDEO_TAILLE_MAX_MO=100)
+
+
+class VideoR2Tests(APITestCase):
+    """Envoi direct des vidéos de campagne du navigateur vers Cloudflare R2."""
+
+    def setUp(self):
+        cache.clear()
+        get_user_model().objects.create_superuser("admin_r2", "r2@ciat.sn", "secret123")
+        r = self.client.post("/api/admin/connexion/", {"username": "admin_r2", "password": "secret123"}, format="json")
+        self.auth = {"HTTP_AUTHORIZATION": f"Token {r.data['token']}"}
+
+    def _photo(self):
+        import io as _io
+        from PIL import Image
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        f = _io.BytesIO()
+        Image.new("RGB", (60, 60), color="red").save(f, "jpeg")
+        return SimpleUploadedFile("photo.jpg", f.getvalue(), content_type="image/jpeg")
+
+    def _payload(self, i=1, **extra):
+        return {"poste": "PRESIDENT", "nom": "Sarr", "prenom": f"Awa{i}", "email": f"awa{i}.sarr@isep.sn",
+                "telephone": f"77100000{i}", "departement": "TIC", "metier": "Développement Backend",
+                "profession_de_foi": "Je veux structurer le club et accompagner chaque projet étudiant.",
+                "photo": self._photo(), **extra}
+
+    def _autorisation(self, taille=10_000_000, type_mime="video/mp4"):
+        return self.client.post("/api/candidatures/video/autorisation/",
+                                {"nom_fichier": "campagne.mp4", "type": type_mime, "taille": taille}, format="json")
+
+    def test_sans_r2_ancien_mode_et_503(self):
+        with self.settings(R2_ACCOUNT_ID=""):
+            self.assertFalse(self.client.get("/api/infos/").data["video_envoi_direct"])
+            self.assertEqual(self._autorisation().status_code, 503)
+
+    def test_autorisation_url_signee_liee_au_type_et_a_la_taille(self):
+        from urllib.parse import parse_qs, urlsplit
+        with self.settings(**R2_TEST):
+            infos = self.client.get("/api/infos/").data
+            self.assertTrue(infos["video_envoi_direct"])
+            self.assertEqual(infos["video_taille_max_mo"], 100)
+            r = self._autorisation(taille=52_428_800)
+            self.assertEqual(r.status_code, 200, r.data)
+            u = urlsplit(r.data["url"])
+            self.assertEqual(u.netloc, "0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com")
+            self.assertTrue(u.path.startswith("/ciat-videos/candidatures/videos/"))
+            q = parse_qs(u.query)
+            self.assertEqual(q["X-Amz-SignedHeaders"], ["content-length;content-type;host"])
+            self.assertEqual(q["X-Amz-Expires"], ["1800"])
+            self.assertEqual(r.data["entetes"], {"Content-Type": "video/mp4"})
+
+    def test_autorisation_refuse_format_et_taille(self):
+        with self.settings(**R2_TEST):
+            self.assertEqual(self._autorisation(type_mime="application/pdf").status_code, 400)
+            self.assertEqual(self._autorisation(taille=101 * 1024 * 1024).status_code, 400)
+            self.assertEqual(self._autorisation(taille=0).status_code, 400)
+
+    def test_candidature_avec_video_r2_serveur_sans_acces_reseau(self):
+        """Cas PythonAnywhere gratuit : R2 injoignable depuis le serveur, la candidature passe."""
+        from unittest import mock
+        with self.settings(**R2_TEST), mock.patch("inscriptions.stockage_r2.verifier_objet", return_value=("injoignable", None)):
+            jeton = self._autorisation().data["jeton"]
+            r = self.client.post("/api/candidatures/", self._payload(video_jeton=jeton), format="multipart")
+            self.assertEqual(r.status_code, 201, r.data)
+            c = CandidaturePoste.objects.get()
+            self.assertTrue(c.video_r2_cle.startswith("candidatures/videos/"))
+            self.assertFalse(c.fichier_video)
+            # Le même jeton ne peut pas servir à une 2e candidature
+            r2 = self.client.post("/api/candidatures/", self._payload(2, video_jeton=jeton), format="multipart")
+            self.assertEqual(r2.status_code, 400)
+
+    def test_video_absente_ou_trop_grosse_refusee_si_r2_joignable(self):
+        from unittest import mock
+        with self.settings(**R2_TEST):
+            jeton = self._autorisation().data["jeton"]
+            with mock.patch("inscriptions.stockage_r2.verifier_objet", return_value=("absent", None)):
+                r = self.client.post("/api/candidatures/", self._payload(video_jeton=jeton), format="multipart")
+                self.assertEqual(r.status_code, 400)
+            with mock.patch("inscriptions.stockage_r2.verifier_objet", return_value=("ok", 200 * 1024 * 1024)):
+                r = self.client.post("/api/candidatures/", self._payload(video_jeton=jeton), format="multipart")
+                self.assertEqual(r.status_code, 400)
+            self.assertFalse(CandidaturePoste.objects.exists())
+
+    def test_jeton_falsifie_refuse(self):
+        from django.core import signing
+        with self.settings(**R2_TEST):
+            faux = signing.dumps({"cle": "candidatures/videos/pirate.mp4", "taille": 1}, salt="autre-sel")
+            r = self.client.post("/api/candidatures/", self._payload(video_jeton=faux), format="multipart")
+            self.assertEqual(r.status_code, 400)
+            self.assertIn("video_jeton", r.data)
+
+    def test_envoi_par_le_serveur_bloque_quand_r2_configure(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        with self.settings(**R2_TEST):
+            video = SimpleUploadedFile("c.mp4", b"x" * 100, content_type="video/mp4")
+            r = self.client.post("/api/candidatures/", self._payload(fichier_video=video), format="multipart")
+            self.assertEqual(r.status_code, 400)
+            self.assertIn("fichier_video", r.data)
+
+    def test_admin_lecture_et_suppression_par_le_navigateur(self):
+        from unittest import mock
+        with self.settings(**R2_TEST), mock.patch("inscriptions.stockage_r2.verifier_objet", return_value=("injoignable", None)):
+            jeton = self._autorisation().data["jeton"]
+            self.client.post("/api/candidatures/", self._payload(video_jeton=jeton), format="multipart")
+            c = CandidaturePoste.objects.get()
+            liste = self.client.get("/api/admin/candidatures/", **self.auth).data
+            fiche = liste[0] if isinstance(liste, list) else liste["results"][0]
+            self.assertIn("X-Amz-Signature=", fiche["video_url"])
+            self.assertIn("X-Amz-Expires=43200", fiche["video_url"])
+            # Serveur sans accès à R2 : il renvoie une URL DELETE signée pour le navigateur de l'admin
+            with mock.patch("inscriptions.stockage_r2.supprimer_objet", return_value=False):
+                r = self.client.delete(f"/api/admin/candidatures/{c.id}/supprimer-video/", **self.auth)
+            self.assertIn("X-Amz-Signature=", r.data["r2_suppression_url"])
+            c.refresh_from_db()
+            self.assertEqual(c.video_r2_cle, "")
+            # Serveur avec accès à R2 : il supprime lui-même, rien à faire côté navigateur
+            c.video_r2_cle = "candidatures/videos/x.mp4"
+            c.save()
+            with mock.patch("inscriptions.stockage_r2.supprimer_objet", return_value=True):
+                r = self.client.delete(f"/api/admin/candidatures/{c.id}/", **self.auth)
+            self.assertEqual(r.status_code, 204)  # supprimée par le serveur : rien à faire côté navigateur
+            self.assertFalse(CandidaturePoste.objects.exists())

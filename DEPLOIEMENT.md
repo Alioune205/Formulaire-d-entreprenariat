@@ -142,3 +142,104 @@ Serveur à **un seul processus** et envoi d'e-mail simulé à 1,5 s (latence Gma
 
 Débit soutenu ≈ **35 inscriptions par minute**. Limite Gmail : ~500 e-mails / 24 h
 (1 e-mail par inscription, 2 par récupération de référence).
+
+---
+
+## 7. Vidéos de campagne sur Cloudflare R2
+
+Les vidéos des candidats ne doivent pas être stockées sur PythonAnywhere (disque de 512 Mo).
+Elles partent **directement du navigateur vers Cloudflare R2** (10 Go gratuits) :
+
+```
+Navigateur ──(1) « puis-je envoyer cette vidéo ? » ──► PythonAnywhere
+           ◄─(2) URL signée, valable 30 min ─────────
+Navigateur ══(3) la vidéo, avec barre de progression ══► Cloudflare R2   (PythonAnywhere ne voit rien passer)
+Navigateur ──(4) formulaire + petit jeton signé ──────► PythonAnywhere   (enregistre l'emplacement)
+```
+
+PythonAnywhere ne fait que **calculer des signatures** (aucun appel réseau vers R2 n'est
+nécessaire, ce qui compte car le compte gratuit bloque la plupart des sites extérieurs).
+
+### 7.1 Créer le bucket (tableau de bord Cloudflare)
+
+1. https://dash.cloudflare.com → **R2 Object Storage** → **Create bucket**.
+2. Nom : **`ciat-videos`** · Location : *Automatic*. **Ne pas** activer l'accès public :
+   le bucket reste privé, les vidéos sont lues via des liens temporaires.
+
+### 7.2 Autoriser l'envoi depuis le site (CORS)
+
+Bucket `ciat-videos` → **Settings** → **CORS Policy** → **Edit**, coller :
+
+```json
+[
+  {
+    "AllowedOrigins": [
+      "https://club-entrepreneuriat-ciat.vercel.app",
+      "http://localhost:5173"
+    ],
+    "AllowedMethods": ["PUT", "GET", "HEAD", "DELETE"],
+    "AllowedHeaders": ["content-type"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3600
+  }
+]
+```
+
+Sans cette règle, le navigateur refuse l'envoi (« Connexion interrompue pendant l'envoi de la vidéo »).
+
+### 7.3 Créer la clé d'accès
+
+1. **R2 Object Storage** → **Manage API tokens** (ou *API* → *Manage API tokens*) → **Create API token**.
+2. Permissions : **Object Read & Write** · Specify bucket : **`ciat-videos` uniquement**.
+3. Notez les trois valeurs affichées **une seule fois** :
+   - **Access Key ID**
+   - **Secret Access Key**
+   - l'**Account ID** (dans l'adresse « S3 API » : `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`)
+
+### 7.4 Brancher PythonAnywhere
+
+Console Bash :
+
+```bash
+cd ~/Formulaire-d-entreprenariat && git pull
+cd backend && workon ciat && python manage.py migrate
+nano .env
+```
+
+Ajouter à la fin du `.env` (valeurs de l'étape 7.3) :
+
+```
+R2_ACCOUNT_ID=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+R2_ACCESS_KEY_ID=xxxxxxxxxxxxxxxxxxxx
+R2_SECRET_ACCESS_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+R2_BUCKET=ciat-videos
+R2_VIDEO_TAILLE_MAX_MO=100
+```
+
+Puis **Web → Reload**. Aucune bibliothèque à installer (pas de `boto3`).
+
+Vérification : `https://alioune205sene.pythonanywhere.com/api/infos/` doit afficher
+`"video_envoi_direct": true`.
+
+### 7.5 Test
+
+Sur le site → Élections → déposer une candidature de test avec un fichier vidéo :
+la barre de progression doit atteindre 100 %, puis la vidéo doit être lisible dans le back-office.
+Supprimez ensuite cette candidature de test depuis le back-office.
+
+### 7.6 Capacité et nettoyage
+
+- 10 Go / 100 Mo par vidéo = au moins **100 vidéos** (une vidéo de téléphone de 1 à 2 min pèse
+  en général 20 à 80 Mo). La taille maximale se règle avec `R2_VIDEO_TAILLE_MAX_MO`.
+- Une vidéo envoyée par un candidat qui n'a jamais validé son formulaire reste sur R2
+  (« orpheline »). Pour les lister / supprimer (si le serveur peut joindre R2) :
+
+  ```bash
+  python manage.py nettoyer_videos_r2              # liste seulement
+  python manage.py nettoyer_videos_r2 --supprimer  # supprime (vidéos de plus de 24 h)
+  ```
+
+  Sur le compte gratuit, R2 est probablement bloqué : on peut demander son ajout à la liste
+  blanche (https://help.pythonanywhere.com/pages/RequestingAllowlistAdditions/), ou surveiller
+  l'espace utilisé dans le tableau de bord R2. La suppression d'une vidéo depuis le back-office
+  fonctionne dans tous les cas (elle est faite par le navigateur de l'admin si besoin).

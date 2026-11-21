@@ -18,6 +18,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle, SimpleRateThrottle
 from django.contrib.auth import authenticate
 
+from django.core import signing
 from django.core.mail import get_connection, send_mail
 
 from .emails import (
@@ -28,11 +29,12 @@ from .emails import (
 from .models import (
     CandidaturePoste, CodeVerification, EnvoiDiffusion, Inscription, Membre, ModeleEmail, ParametresPlateforme,
 )
+from . import stockage_r2
 from .genre import genre_effectif
 from .postes import POSTES_CATALOGUE
 from .recap import calculer_recap
 from .serializers import (
-    CandidaturePosteAdminSerializer, CandidaturePostePublicSerializer,
+    SEL_JETON_VIDEO, CandidaturePosteAdminSerializer, CandidaturePostePublicSerializer,
     InscriptionAdminSerializer, InscriptionPubliqueSerializer,
     MembreGenreSerializer, ModeleEmailSerializer,
 )
@@ -56,6 +58,9 @@ def infos_publiques(request):
         "date_limite": date_limite().isoformat(),
         "maintenant": timezone.now().isoformat(),
         "inscriptions_ouvertes": inscriptions_ouvertes(),
+        # Vidéos de campagne : envoi direct vers Cloudflare R2 si configuré
+        "video_envoi_direct": stockage_r2.configure(),
+        "video_taille_max_mo": settings.R2_VIDEO_TAILLE_MAX_MO if stockage_r2.configure() else 25,
     })
 
 
@@ -78,6 +83,48 @@ class ThrottleParIP(SimpleRateThrottle):
 
 class SuiviThrottle(ThrottleParIP):
     scope = "suivi"
+
+
+class VideoAutorisationThrottle(ThrottleParIP):
+    scope = "video_autorisation"
+
+
+@api_view(["POST"])
+@permission_classes([permissions.AllowAny])
+@throttle_classes([VideoAutorisationThrottle])
+def autorisation_video(request):
+    """POST /api/candidatures/video/autorisation/ {nom_fichier, type, taille}
+
+    Renvoie une URL pré-signée (valable 30 min) pour envoyer la vidéo DIRECTEMENT du
+    navigateur vers Cloudflare R2. L'URL n'accepte que ce type et cette taille exacte de
+    fichier. Le jeton signé renvoyé est à joindre au formulaire de candidature.
+    """
+    if not stockage_r2.configure():
+        return Response({"detail": "L'envoi direct de vidéo n'est pas configuré.", "code": "r2_non_configure"},
+                        status=status.HTTP_503_SERVICE_UNAVAILABLE)
+    type_mime = str(request.data.get("type", "")).strip().lower()
+    nom = str(request.data.get("nom_fichier", ""))[:200]
+    try:
+        taille = int(request.data.get("taille", 0))
+    except (TypeError, ValueError):
+        taille = 0
+    if type_mime not in stockage_r2.TYPES_VIDEO:
+        return Response({"detail": "Format non accepté. Utilisez une vidéo MP4, WebM ou MOV."},
+                        status=status.HTTP_400_BAD_REQUEST)
+    if taille <= 0:
+        return Response({"detail": "Fichier vidéo vide ou illisible."}, status=status.HTTP_400_BAD_REQUEST)
+    if taille > stockage_r2.taille_max():
+        return Response({"detail": f"La vidéo ne doit pas dépasser {settings.R2_VIDEO_TAILLE_MAX_MO} Mo."},
+                        status=status.HTTP_400_BAD_REQUEST)
+
+    cle, url = stockage_r2.autorisation_envoi(nom, type_mime, taille)
+    return Response({
+        "url": url,
+        "methode": "PUT",
+        "entetes": {"Content-Type": type_mime},
+        "jeton": signing.dumps({"cle": cle, "taille": taille}, salt=SEL_JETON_VIDEO),
+        "expire_dans": 30 * 60,
+    })
 
 
 class DemandeCodeThrottle(ThrottleParIP):
@@ -660,12 +707,28 @@ class CandidaturePosteAdminViewSet(viewsets.ModelViewSet):
             )
         return qs
 
-    def perform_destroy(self, instance):
+    @staticmethod
+    def _supprimer_video_r2(cle):
+        """Supprime la vidéo sur R2. Si le serveur ne peut pas joindre R2 (PythonAnywhere
+        gratuit), renvoie une URL de suppression signée que le navigateur de l'admin exécutera."""
+        if not cle or not stockage_r2.configure():
+            return None
+        if stockage_r2.supprimer_objet(cle):
+            return None
+        return stockage_r2.url_suppression(cle)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        url_r2 = self._supprimer_video_r2(instance.video_r2_cle)
         if instance.photo:
             instance.photo.delete(save=False)
         if instance.fichier_video:
             instance.fichier_video.delete(save=False)
-        super().perform_destroy(instance)
+        instance.delete()
+        if url_r2:
+            # Le navigateur de l'admin doit finir la suppression sur R2 (serveur sans accès à R2).
+            return Response({"r2_suppression_url": url_r2})
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=["post"], url_path="changer-statut")
     def changer_statut(self, request, pk=None):
@@ -683,12 +746,14 @@ class CandidaturePosteAdminViewSet(viewsets.ModelViewSet):
     def supprimer_video(self, request, pk=None):
         """Supprime uniquement la vidéo de campagne (fichier et/ou lien) d'un candidat."""
         candidature = self.get_object()
+        url_r2 = self._supprimer_video_r2(candidature.video_r2_cle)
         if candidature.fichier_video:
             candidature.fichier_video.delete(save=False)
             candidature.fichier_video = None
         candidature.lien_video = ""
-        candidature.save(update_fields=["fichier_video", "lien_video", "modifie_le"])
-        return Response(self.get_serializer(candidature).data)
+        candidature.video_r2_cle = ""
+        candidature.save(update_fields=["fichier_video", "lien_video", "video_r2_cle", "modifie_le"])
+        return Response({**self.get_serializer(candidature).data, "r2_suppression_url": url_r2})
 
     @action(detail=False, methods=["get"], url_path="stats")
     def stats(self, request):
@@ -719,7 +784,11 @@ class CandidaturePosteAdminViewSet(viewsets.ModelViewSet):
             writer.writerow([
                 c.id, c.get_poste_display(), c.nom, c.prenom, c.email, c.telephone,
                 c.departement, c.metier, c.niveau, c.nom_projet,
-                c.get_statut_display(), c.lien_video or (request.build_absolute_uri(c.fichier_video.url) if c.fichier_video else ""),
+                c.get_statut_display(),
+                c.lien_video
+                or (stockage_r2.url_lecture(c.video_r2_cle, expire=7 * 24 * 3600)  # lien valable 7 jours
+                    if c.video_r2_cle and stockage_r2.configure() else "")
+                or (request.build_absolute_uri(c.fichier_video.url) if c.fichier_video else ""),
                 timezone.localtime(c.cree_le).strftime("%d/%m/%Y %H:%M"),
             ])
         return response

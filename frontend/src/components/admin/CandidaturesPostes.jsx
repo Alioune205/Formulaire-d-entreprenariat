@@ -143,10 +143,11 @@ export default function CandidaturesPostes({ onDeconnexion }) {
     setActionEnCours(true);
     setErreur(null);
     try {
-      await api(`/admin/candidatures/${candidat.id}/`, {
+      const res = await api(`/admin/candidatures/${candidat.id}/`, {
         method: 'DELETE',
         auth: true,
       });
+      supprimerSurR2(res?.r2_suppression_url);
       setCandidatures((prev) => prev.filter((c) => c.id !== candidat.id));
       if (candidatSelectionne && candidatSelectionne.id === candidat.id) {
         setCandidatSelectionne(null);
@@ -157,6 +158,12 @@ export default function CandidaturesPostes({ onDeconnexion }) {
     } finally {
       setActionEnCours(false);
     }
+  };
+
+  // Si le serveur (PythonAnywhere gratuit) ne peut pas joindre Cloudflare R2, il renvoie une URL de
+  // suppression signée, valable 15 min : le navigateur de l'admin supprime alors lui-même la vidéo.
+  const supprimerSurR2 = (url) => {
+    if (url) fetch(url, { method: 'DELETE' }).catch(() => {});
   };
 
   const supprimerVideo = async (candidat) => {
@@ -171,6 +178,7 @@ export default function CandidaturesPostes({ onDeconnexion }) {
         method: 'DELETE',
         auth: true,
       });
+      supprimerSurR2(maj?.r2_suppression_url);
       setCandidatures((prev) => prev.map((c) => (c.id === candidat.id ? maj : c)));
       if (candidatSelectionne && candidatSelectionne.id === candidat.id) {
         setCandidatSelectionne(maj);
@@ -360,7 +368,7 @@ export default function CandidaturesPostes({ onDeconnexion }) {
                       </td>
 
                       <td className="px-4 py-3">
-                        {c.lien_video || c.fichier_video ? (
+                        {c.lien_video || c.fichier_video || c.video_url ? (
                           <div className="inline-flex items-center gap-1.5">
                             {c.lien_video ? (
                               <a
@@ -374,7 +382,7 @@ export default function CandidaturesPostes({ onDeconnexion }) {
                               </a>
                             ) : (
                               <a
-                                href={urlMedia(c.fichier_video)}
+                                href={c.video_url || urlMedia(c.fichier_video)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={(e) => e.stopPropagation()}
@@ -489,7 +497,7 @@ export default function CandidaturesPostes({ onDeconnexion }) {
               <div>
                 <div className="flex items-center justify-between gap-2">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-caramel-700">Vidéo de campagne</h4>
-                  {(candidatSelectionne.lien_video || candidatSelectionne.fichier_video) && (
+                  {(candidatSelectionne.lien_video || candidatSelectionne.fichier_video || candidatSelectionne.video_url) && (
                     <button
                       type="button"
                       disabled={actionEnCours}
@@ -512,10 +520,10 @@ export default function CandidaturesPostes({ onDeconnexion }) {
                       <ExternalLink className="h-3.5 w-3.5" /> Ouvrir la vidéo
                     </a>
                   </div>
-                ) : candidatSelectionne.fichier_video ? (
+                ) : (candidatSelectionne.video_url || candidatSelectionne.fichier_video) ? (
                   <div className="mt-2">
                     <video controls className="w-full max-h-56 rounded-xl bg-black">
-                      <source src={urlMedia(candidatSelectionne.fichier_video)} />
+                      <source src={candidatSelectionne.video_url || urlMedia(candidatSelectionne.fichier_video)} />
                       Votre navigateur ne supporte pas la lecture vidéo.
                     </video>
                   </div>

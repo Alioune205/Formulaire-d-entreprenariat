@@ -1,8 +1,8 @@
-import { useState, useRef } from 'react';
-import { AlertCircle, Camera, CheckCircle2, Film, Link as LinkIcon, Loader2, Upload, User, Video, X } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { AlertCircle, Camera, CheckCircle2, Film, Link as LinkIcon, Loader2, RotateCcw, Upload, User, Video, X } from 'lucide-react';
 import { POSTES } from '../lib/postes.js';
 import { FILIERES } from '../lib/filieres.js';
-import { api, ErreurApi } from '../lib/api.js';
+import { api, envoyerVersR2, ErreurApi } from '../lib/api.js';
 
 export default function FormulaireCandidature({ posteInitial, onFermer, onSucces }) {
   const [posteCode, setPosteCode] = useState(posteInitial?.code || 'PRESIDENT');
@@ -26,6 +26,54 @@ export default function FormulaireCandidature({ posteInitial, onFermer, onSucces
   const [lienVideo, setLienVideo] = useState('');
   const [videoFichier, setVideoFichier] = useState(null);
   const videoInputRef = useRef(null);
+
+  // Envoi direct de la vidéo vers Cloudflare R2 (sans passer par le serveur), si configuré.
+  const [configVideo, setConfigVideo] = useState({ direct: false, maxMo: 25 });
+  const [envoiVideo, setEnvoiVideo] = useState({ etat: 'aucun', progression: 0, jeton: null, message: '' });
+  const annulerEnvoiRef = useRef(null);
+
+  useEffect(() => {
+    api('/infos/')
+      .then((d) => setConfigVideo({ direct: Boolean(d.video_envoi_direct), maxMo: d.video_taille_max_mo || 25 }))
+      .catch(() => {});
+    return () => annulerEnvoiRef.current?.(); // fermeture du formulaire : on interrompt l'envoi
+  }, []);
+
+  const demarrerEnvoiVideo = async (file) => {
+    annulerEnvoiRef.current?.();
+    setEnvoiVideo({ etat: 'envoi', progression: 0, jeton: null, message: '' });
+    try {
+      const autorisation = await api('/candidatures/video/autorisation/', {
+        method: 'POST',
+        body: { nom_fichier: file.name, type: file.type, taille: file.size },
+      });
+      const { promesse, annuler } = envoyerVersR2(file, autorisation, (p) =>
+        setEnvoiVideo((e) => ({ ...e, progression: p })));
+      annulerEnvoiRef.current = annuler;
+      await promesse;
+      annulerEnvoiRef.current = null;
+      setEnvoiVideo({ etat: 'ok', progression: 100, jeton: autorisation.jeton, message: '' });
+    } catch (err) {
+      annulerEnvoiRef.current = null;
+      if (err.annule) return;
+      setEnvoiVideo({
+        etat: 'erreur',
+        progression: 0,
+        jeton: null,
+        message: err instanceof ErreurApi
+          ? err.message
+          : `${err.message} Vérifiez votre connexion puis réessayez, ou utilisez un lien vidéo.`,
+      });
+    }
+  };
+
+  const retirerVideo = () => {
+    annulerEnvoiRef.current?.();
+    annulerEnvoiRef.current = null;
+    setVideoFichier(null);
+    setEnvoiVideo({ etat: 'aucun', progression: 0, jeton: null, message: '' });
+    if (videoInputRef.current) videoInputRef.current.value = '';
+  };
 
   const [chargement, setChargement] = useState(false);
   const [erreur, setErreur] = useState('');
@@ -56,12 +104,13 @@ export default function FormulaireCandidature({ posteInitial, onFermer, onSucces
   const handleVideoSelect = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 25 * 1024 * 1024) {
-      setErreur('Le fichier vidéo ne doit pas dépasser 25 Mo.');
+    if (file.size > configVideo.maxMo * 1024 * 1024) {
+      setErreur(`Le fichier vidéo ne doit pas dépasser ${configVideo.maxMo} Mo.`);
       return;
     }
     setVideoFichier(file);
     setErreur('');
+    if (configVideo.direct) demarrerEnvoiVideo(file);
   };
 
   const soumettre = async (e) => {
@@ -89,6 +138,16 @@ export default function FormulaireCandidature({ posteInitial, onFermer, onSucces
       setErreur('Votre profession de foi doit comporter au moins 30 caractères.');
       return;
     }
+    if (modeVideo === 'fichier' && videoFichier && configVideo.direct) {
+      if (envoiVideo.etat === 'envoi') {
+        setErreur('Votre vidéo est en cours d’envoi. Patientez jusqu’à 100 % avant de valider.');
+        return;
+      }
+      if (envoiVideo.etat === 'erreur') {
+        setErreur('L’envoi de la vidéo a échoué. Relancez-le, retirez la vidéo ou utilisez un lien.');
+        return;
+      }
+    }
 
     setChargement(true);
     try {
@@ -108,7 +167,12 @@ export default function FormulaireCandidature({ posteInitial, onFermer, onSucces
       if (modeVideo === 'lien' && lienVideo.trim()) {
         formData.append('lien_video', lienVideo.trim());
       } else if (modeVideo === 'fichier' && videoFichier) {
-        formData.append('fichier_video', videoFichier);
+        if (configVideo.direct) {
+          // La vidéo est déjà sur R2 : on n'envoie au serveur qu'un petit jeton signé.
+          formData.append('video_jeton', envoiVideo.jeton);
+        } else {
+          formData.append('fichier_video', videoFichier); // ancien mode (R2 non configuré)
+        }
       }
 
       await api('/candidatures/', {
@@ -461,14 +525,56 @@ export default function FormulaireCandidature({ posteInitial, onFermer, onSucces
                 </div>
               ) : (
                 <div className="mt-3">
-                  <button
-                    type="button"
-                    onClick={() => videoInputRef.current?.click()}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-caramel-400 bg-white px-4 py-3 text-xs font-bold text-brun-800 hover:bg-caramel-50/50"
-                  >
-                    <Film className="h-4 w-4 text-caramel-600" />
-                    {videoFichier ? videoFichier.name : 'Choisir un fichier vidéo court (max 25 Mo)'}
-                  </button>
+                  {!videoFichier ? (
+                    <button
+                      type="button"
+                      onClick={() => videoInputRef.current?.click()}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-caramel-400 bg-white px-4 py-3 text-xs font-bold text-brun-800 hover:bg-caramel-50/50"
+                    >
+                      <Film className="h-4 w-4 text-caramel-600" />
+                      Choisir un fichier vidéo (max {configVideo.maxMo} Mo)
+                    </button>
+                  ) : (
+                    <div className="rounded-xl border border-brun-200 bg-white p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="flex min-w-0 items-center gap-2 text-xs font-bold text-brun-800">
+                          <Film className="h-4 w-4 shrink-0 text-caramel-600" />
+                          <span className="truncate">{videoFichier.name}</span>
+                          <span className="shrink-0 font-normal text-brun-500">({(videoFichier.size / 1024 / 1024).toFixed(1)} Mo)</span>
+                        </p>
+                        <button type="button" onClick={retirerVideo} className="shrink-0 rounded-lg p-1 text-brun-500 hover:bg-brun-50" aria-label="Retirer la vidéo">
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      {configVideo.direct && envoiVideo.etat === 'envoi' && (
+                        <div className="mt-2.5">
+                          <div className="h-2 w-full overflow-hidden rounded-full bg-brun-100" role="progressbar"
+                            aria-valuenow={envoiVideo.progression} aria-valuemin={0} aria-valuemax={100} aria-label="Envoi de la vidéo">
+                            <div className="h-full rounded-full bg-caramel-500 transition-all" style={{ width: `${envoiVideo.progression}%` }} />
+                          </div>
+                          <p className="mt-1 flex items-center gap-1.5 text-[11px] font-semibold text-brun-600">
+                            <Loader2 className="h-3 w-3 animate-spin" /> Envoi de la vidéo… {envoiVideo.progression} %
+                            <span className="font-normal text-brun-500">— vous pouvez continuer à remplir le formulaire.</span>
+                          </p>
+                        </div>
+                      )}
+                      {configVideo.direct && envoiVideo.etat === 'ok' && (
+                        <p className="mt-2 flex items-center gap-1.5 text-[11px] font-bold text-emerald-700">
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Vidéo envoyée avec succès.
+                        </p>
+                      )}
+                      {configVideo.direct && envoiVideo.etat === 'erreur' && (
+                        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-[11px] font-semibold text-red-700">{envoiVideo.message}</p>
+                          <button type="button" onClick={() => demarrerEnvoiVideo(videoFichier)}
+                            className="inline-flex items-center gap-1 rounded-lg border border-brun-200 px-2.5 py-1 text-[11px] font-bold text-brun-800 hover:bg-brun-50">
+                            <RotateCcw className="h-3 w-3" /> Réessayer
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <input
                     ref={videoInputRef}
                     type="file"
@@ -477,7 +583,7 @@ export default function FormulaireCandidature({ posteInitial, onFermer, onSucces
                     onChange={handleVideoSelect}
                   />
                   <p className="mt-1 text-[11px] text-brun-500">
-                    Formats acceptés : MP4, WebM (25 Mo maximum).
+                    Formats acceptés : MP4, WebM, MOV ({configVideo.maxMo} Mo maximum).
                   </p>
                 </div>
               )}
@@ -501,7 +607,7 @@ export default function FormulaireCandidature({ posteInitial, onFermer, onSucces
               </button>
               <button
                 type="submit"
-                disabled={chargement}
+                disabled={chargement || (modeVideo === 'fichier' && envoiVideo.etat === 'envoi')}
                 className="inline-flex items-center gap-2 rounded-xl bg-caramel-500 px-6 py-2.5 text-sm font-bold text-white shadow-md transition hover:bg-caramel-400 disabled:opacity-50"
               >
                 {chargement ? (

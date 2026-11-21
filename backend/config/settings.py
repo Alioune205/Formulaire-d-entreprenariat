@@ -138,6 +138,8 @@ REST_FRAMEWORK = {
         "suivi": _env("LIMITE_SUIVI", "300/minute"),
         "recuperation_demande": _env("LIMITE_RECUP_DEMANDE", "60/hour"),
         "recuperation_verification": _env("LIMITE_RECUP_VERIF", "120/minute"),
+        # Demandes d'URL d'envoi de vidéo vers R2 (Wi-Fi ISEP partagé : limite large)
+        "video_autorisation": _env("LIMITE_VIDEO_AUTORISATION", "60/hour"),
     },
     # Derrière le serveur de PythonAnywhere, l'IP du visiteur est dans X-Forwarded-For :
     # NUM_PROXIES=1 permet de lire la vraie IP au lieu de celle du proxy.
@@ -196,6 +198,14 @@ DEFAULT_FROM_EMAIL = _env(
 
 # Adresse publique du site React (liens « Suivre mon dossier » dans les e-mails).
 FRONTEND_URL = _env("FRONTEND_URL", "http://localhost:5173")
+
+# --- Vidéos de campagne sur Cloudflare R2 (upload direct navigateur -> R2) ---
+# Tant que ces 4 valeurs ne sont pas renseignées, l'ancien envoi via le serveur (25 Mo max) est utilisé.
+R2_ACCOUNT_ID = _env("R2_ACCOUNT_ID", "")
+R2_ACCESS_KEY_ID = _env("R2_ACCESS_KEY_ID", "")
+R2_SECRET_ACCESS_KEY = _env("R2_SECRET_ACCESS_KEY", "")
+R2_BUCKET = _env("R2_BUCKET", "")
+R2_VIDEO_TAILLE_MAX_MO = int(_env("R2_VIDEO_TAILLE_MAX_MO", "100"))
 
 # Clôture des inscriptions (heure de Dakar). Format ISO 8601.
 DATE_LIMITE_INSCRIPTION = _env("DATE_LIMITE_INSCRIPTION", "2026-11-14T23:59:59+00:00")

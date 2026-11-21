@@ -12,6 +12,7 @@ urlpatterns = [
     path("inscriptions/", views.InscriptionPubliqueView.as_view(), name="inscription-publique"),
     path("candidatures/", views.CandidaturePostePubliqueView.as_view(), name="candidature-publique"),
     path("candidatures/postes/", views.liste_postes_disponibles, name="candidatures-postes"),
+    path("candidatures/video/autorisation/", views.autorisation_video, name="candidature-video-autorisation"),
     path("infos/", views.infos_publiques, name="infos-publiques"),
     path("suivi/", views.suivi_dossier, name="suivi-dossier"),
     path("recuperation/demande/", views.recuperation_demande, name="recuperation-demande"),

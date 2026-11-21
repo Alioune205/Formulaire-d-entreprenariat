@@ -52,6 +52,29 @@ export async function api(chemin, { method = 'GET', body, auth = false } = {}) {
   return data;
 }
 
+/**
+ * Envoie un fichier DIRECTEMENT vers Cloudflare R2 avec l'URL pré-signée fournie par le serveur.
+ * Le fichier ne passe pas par PythonAnywhere. XMLHttpRequest permet de suivre la progression.
+ * Renvoie { promesse, annuler }.
+ */
+export function envoyerVersR2(fichier, autorisation, onProgression) {
+  const xhr = new XMLHttpRequest();
+  const promesse = new Promise((resolve, reject) => {
+    xhr.open(autorisation.methode || 'PUT', autorisation.url);
+    Object.entries(autorisation.entetes || {}).forEach(([k, v]) => xhr.setRequestHeader(k, v));
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onProgression) onProgression(Math.round((100 * e.loaded) / e.total));
+    };
+    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300
+      ? resolve()
+      : reject(new Error(`Envoi refusé par le stockage (code ${xhr.status}).`)));
+    xhr.onerror = () => reject(new Error('Connexion interrompue pendant l’envoi de la vidéo.'));
+    xhr.onabort = () => reject(Object.assign(new Error('Envoi annulé.'), { annule: true }));
+    xhr.send(fichier);
+  });
+  return { promesse, annuler: () => xhr.abort() };
+}
+
 export async function telechargerCsv(cheminOuParams = '', nomFichier = null) {
   const url = cheminOuParams.startsWith('/')
     ? `${BASE}/api${cheminOuParams}`

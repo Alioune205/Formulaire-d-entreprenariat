@@ -1,7 +1,9 @@
+from django.core import signing
 from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers
 
+from . import stockage_r2
 from .genre import estimer_genre, genre_effectif
 from .models import CandidaturePoste, Inscription, Membre, ModeleEmail
 from .utils import (
@@ -167,6 +169,9 @@ class ModeleEmailSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "modifie_le"]
 
 
+SEL_JETON_VIDEO = "candidature-video-r2"
+
+
 class CandidaturePostePublicSerializer(serializers.ModelSerializer):
     """Utilisé par le formulaire public pour postuler à un poste de gouvernance."""
 
@@ -175,15 +180,31 @@ class CandidaturePostePublicSerializer(serializers.ModelSerializer):
         error_messages={"required": "La photo est obligatoire pour que les électeurs puissent vous identifier.",
                         "blank": "La photo est obligatoire."}
     )
+    # Jeton signé renvoyé par /api/candidatures/video/autorisation/ après l'envoi direct vers R2.
+    video_jeton = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
     class Meta:
         model = CandidaturePoste
         fields = [
             "id", "poste", "nom", "prenom", "email", "telephone",
             "departement", "metier", "niveau", "nom_projet",
-            "profession_de_foi", "photo", "lien_video", "fichier_video",
+            "profession_de_foi", "photo", "lien_video", "fichier_video", "video_jeton",
         ]
         read_only_fields = ["id"]
+
+    def validate_video_jeton(self, value):
+        if not value:
+            return None
+        try:
+            # Jeton émis par le serveur il y a moins de 6 h : la clé ne peut pas être inventée.
+            donnees = signing.loads(value, salt=SEL_JETON_VIDEO, max_age=6 * 3600)
+        except signing.SignatureExpired:
+            raise serializers.ValidationError("L'envoi de la vidéo a expiré. Choisissez à nouveau votre vidéo.")
+        except signing.BadSignature:
+            raise serializers.ValidationError("Vidéo invalide. Choisissez à nouveau votre vidéo.")
+        if CandidaturePoste.objects.filter(video_r2_cle=donnees["cle"]).exists():
+            raise serializers.ValidationError("Cette vidéo est déjà associée à une autre candidature.")
+        return donnees
 
     def validate_email(self, value):
         val = value.strip().lower()
@@ -221,6 +242,11 @@ class CandidaturePostePublicSerializer(serializers.ModelSerializer):
         return value
 
     def validate_fichier_video(self, value):
+        if value and stockage_r2.configure():
+            # Avec R2, les vidéos ne doivent jamais être stockées sur le disque du serveur.
+            raise serializers.ValidationError(
+                "Les vidéos sont désormais envoyées directement vers notre stockage. Rechargez la page et réessayez."
+            )
         if value:
             # Limite à 25 Mo
             if value.size > 25 * 1024 * 1024:
@@ -237,6 +263,19 @@ class CandidaturePostePublicSerializer(serializers.ModelSerializer):
         if len(attrs.get("profession_de_foi", "")) < 30:
             raise serializers.ValidationError({"profession_de_foi": "Votre profession de foi doit comporter au moins 30 caractères."})
 
+        video = attrs.pop("video_jeton", None)
+        if video:
+            # Si le serveur peut joindre R2, on vérifie que la vidéo est bien arrivée et sa taille.
+            # Sinon (PythonAnywhere gratuit), la taille est garantie par la signature de l'URL d'envoi.
+            etat, taille = stockage_r2.verifier_objet(video["cle"])
+            if etat == "absent":
+                raise serializers.ValidationError(
+                    {"video_jeton": "La vidéo n'a pas été reçue. Relancez son envoi avant de valider."})
+            if etat == "ok" and taille > stockage_r2.taille_max():
+                raise serializers.ValidationError({"video_jeton": "La vidéo dépasse la taille autorisée."})
+            attrs["video_r2_cle"] = video["cle"]
+            attrs["fichier_video"] = None
+
         return attrs
 
 
@@ -245,16 +284,23 @@ class CandidaturePosteAdminSerializer(serializers.ModelSerializer):
 
     poste_libelle = serializers.CharField(source="get_poste_display", read_only=True)
     statut_libelle = serializers.CharField(source="get_statut_display", read_only=True)
+    # Lien de lecture temporaire (12 h) pour les vidéos stockées sur R2 : le bucket reste privé.
+    video_url = serializers.SerializerMethodField()
 
     class Meta:
         model = CandidaturePoste
         fields = [
             "id", "poste", "poste_libelle", "nom", "prenom", "email", "telephone",
             "departement", "metier", "niveau", "nom_projet",
-            "profession_de_foi", "photo", "lien_video", "fichier_video",
+            "profession_de_foi", "photo", "lien_video", "fichier_video", "video_r2_cle", "video_url",
             "statut", "statut_libelle", "notes_admin", "cree_le", "modifie_le",
         ]
         read_only_fields = [
-            "id", "poste_libelle", "statut_libelle", "cree_le", "modifie_le",
+            "id", "poste_libelle", "statut_libelle", "video_r2_cle", "video_url", "cree_le", "modifie_le",
         ]
+
+    def get_video_url(self, obj):
+        if obj.video_r2_cle and stockage_r2.configure():
+            return stockage_r2.url_lecture(obj.video_r2_cle)
+        return None
 
