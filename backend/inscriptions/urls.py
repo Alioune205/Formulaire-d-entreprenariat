@@ -22,5 +22,7 @@ urlpatterns = [
     path("admin/parametres/", views.parametres_plateforme, name="admin-parametres"),
     path("admin/diffusion-whatsapp/", views.diffusion_whatsapp, name="admin-diffusion-whatsapp"),
     path("admin/diffusion-whatsapp/apercu/", views.apercu_diffusion_whatsapp, name="admin-diffusion-whatsapp-apercu"),
+    path("admin/diffusion-elections/", views.diffusion_elections, name="admin-diffusion-elections"),
+    path("admin/diffusion-elections/apercu/", views.apercu_diffusion_elections, name="admin-diffusion-elections-apercu"),
     path("", include(router.urls)),
 ]

@@ -1,0 +1,92 @@
+{% extends "emails/base.html" %}
+{% block contenu %}
+<p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#331e14;">
+  {{ salutation }}
+</p>
+
+<p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#5f3b28;">
+  Tu souhaites contribuer au développement du Club d'Entrepreneuriat du CIAT et participer activement à sa gouvernance ? C'est le moment de te lancer !
+</p>
+
+<p style="margin:0 0 20px;font-size:15px;line-height:1.7;font-weight:bold;color:#4a2c1e;">
+  13 postes sont à pourvoir au sein du bureau exécutif et des différentes cellules sectorielles.
+</p>
+
+{# Affiche / Flyer officiel inséré dans l'e-mail #}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;">
+  <tr>
+    <td align="center">
+      <a href="https://club-entrepreneuriat-ciat.vercel.app/elections" target="_blank" style="text-decoration:none;">
+        <img src="cid:flyer-ciat" width="100%" alt="Affiche Appel à Candidatures — CIAT"
+             style="display:block;width:100%;max-width:488px;height:auto;border-radius:12px;border:1.5px solid #ddb28c;box-shadow:0 4px 16px rgba(51,30,20,0.12);">
+      </a>
+    </td>
+  </tr>
+</table>
+
+{# Bouton principal d'action pour postuler #}
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;">
+  <tr>
+    <td align="center" style="border-radius:10px;background-color:#4a2c1e;">
+      <a href="https://club-entrepreneuriat-ciat.vercel.app/elections" target="_blank"
+         style="display:inline-block;padding:14px 28px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:10px;">
+        Déposer ma candidature &rarr;
+      </a>
+    </td>
+  </tr>
+</table>
+
+{# Encadré : Comment postuler ? #}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px;">
+  <tr>
+    <td style="border-left:4px solid #c08457;background-color:#faf6f3;padding:16px 20px;border-radius:0 10px 10px 0;">
+      <p style="margin:0 0 8px;font-size:14px;font-weight:bold;color:#4a2c1e;text-transform:uppercase;letter-spacing:0.5px;">
+        Comment postuler ?
+      </p>
+      <ul style="margin:0;padding-left:18px;font-size:14px;line-height:1.7;color:#5f3b28;">
+        <li style="margin-bottom:4px;">Choisis un seul poste.</li>
+        <li style="margin-bottom:4px;">Prépare une photo nette et une courte vidéo de campagne.</li>
+        <li>Soumets ta candidature en ligne avant la date limite.</li>
+      </ul>
+    </td>
+  </tr>
+</table>
+
+{# Encadré Date Limite #}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="border:1.5px solid #e3d0c1;border-radius:10px;border-collapse:separate;margin:0 0 22px;">
+  <tr>
+    <td style="background-color:#faf6f3;padding:12px 18px;border-radius:10px;">
+      <p style="margin:0;font-size:14px;line-height:1.6;color:#4a2c1e;">
+        <strong>Date limite impérative :</strong> <span style="color:#a66c42;font-weight:bold;">lundi à 23h59 précises.</span><br>
+        <span style="font-size:12.5px;color:#7f5239;">Passé ce délai, le formulaire de candidature sera définitivement verrouillé.</span>
+      </p>
+    </td>
+  </tr>
+</table>
+
+{# Lien direct de candidature #}
+<p style="margin:0 0 20px;font-size:13px;line-height:1.6;color:#5f3b28;">
+  Lien direct de candidature :<br>
+  <a href="https://club-entrepreneuriat-ciat.vercel.app/elections" target="_blank"
+     style="color:#a66c42;font-weight:bold;text-decoration:underline;word-break:break-all;">
+    https://club-entrepreneuriat-ciat.vercel.app/elections
+  </a>
+</p>
+
+<p style="margin:0 0 24px;font-size:14.5px;line-height:1.7;color:#331e14;">
+  Ne manque pas cette occasion de faire entendre ta voix, de prendre des responsabilités et de contribuer à l'avenir du club.
+</p>
+
+{# Signature CIAT #}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="border-top:1px dashed #ddb28c;padding-top:16px;">
+  <tr>
+    <td style="font-size:13px;line-height:1.6;color:#5f3b28;">
+      <strong style="color:#4a2c1e;">Innovation &bull; Collaboration &bull; Impact</strong><br>
+      L'équipe du Club d'Entrepreneuriat CIAT<br>
+      <span style="color:#7f5239;">Centre d'Innovation, d'Application et de Transfert — ISEP Amadou Trawaré</span>
+    </td>
+  </tr>
+</table>
+{% endblock %}

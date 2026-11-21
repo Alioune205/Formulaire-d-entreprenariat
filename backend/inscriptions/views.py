@@ -22,8 +22,9 @@ from django.core import signing
 from django.core.mail import get_connection, send_mail
 
 from .emails import (
-    LIEN_WHATSAPP_DEFAUT, apercu_acceptation, apercu_modele_acceptation, apercu_whatsapp, apres_reponse,
-    collecter_destinataires_whatsapp, envoyer_acceptation, envoyer_alerte_regeneration, envoyer_code,
+    LIEN_WHATSAPP_DEFAUT, apercu_acceptation, apercu_appel_candidatures, apercu_modele_acceptation,
+    apercu_whatsapp, apres_reponse, collecter_destinataires_whatsapp, collecter_tous_destinataires_plateforme,
+    envoyer_acceptation, envoyer_alerte_regeneration, envoyer_appel_candidatures, envoyer_code,
     envoyer_confirmation, envoyer_whatsapp,
 )
 from .models import (
@@ -415,6 +416,86 @@ def diffusion_whatsapp(request):
                 pass
 
     apres = collecter_destinataires_whatsapp()
+    return Response({
+        "envoyes": envoyes,
+        "echecs": echecs,
+        "restants": len(apres["restants"]),
+        "deja_envoyes": apres["deja_envoyes_count"],
+        "total_uniques": len(apres["tous"]),
+    })
+
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAdminUser])
+def apercu_diffusion_elections(request):
+    """GET /api/admin/diffusion-elections/apercu/ — aperçu HTML du flyer et de l'e-mail d'appel à candidatures."""
+    return Response(apercu_appel_candidatures())
+
+
+@api_view(["GET", "POST"])
+@permission_classes([permissions.IsAdminUser])
+def diffusion_elections(request):
+    """GET/POST /api/admin/diffusion-elections/ — diffusion dédoublonnée de l'appel à candidatures."""
+    collecte = collecter_tous_destinataires_plateforme()
+
+    if request.method == "GET":
+        historique = [
+            {"id": e.id, "nom": e.nom_destinataire, "email": e.email_brut, "envoye_le": e.envoye_le}
+            for e in EnvoiDiffusion.objects.filter(canal="ELECTIONS_APPEL")[:100]
+        ]
+        return Response({
+            "total_uniques": len(collecte["tous"]),
+            "deja_envoyes": collecte["deja_envoyes_count"],
+            "restants": len(collecte["restants"]),
+            "destinataires_restants": [
+                {"email": d["email"], "nom": d["nom"], "source": d["source"]}
+                for d in collecte["restants"]
+            ],
+            "historique": historique,
+        })
+
+    try:
+        limite = max(1, min(int(request.data.get("limite", 10)), 50))
+    except (TypeError, ValueError):
+        limite = 10
+
+    lot = collecte["restants"][:limite]
+    envoyes, echecs = [], []
+    if lot:
+        connexion = get_connection()
+        try:
+            connexion.open()
+            for d in lot:
+                try:
+                    envoyer_appel_candidatures(d["email"], d["salutation"], connection=connexion)
+                except Exception as exc:  # noqa: BLE001
+                    logger.exception("Échec diffusion élections vers %s", d["email"])
+                    echecs.append({"email": d["email"], "nom": d["nom"], "erreur": type(exc).__name__})
+                    continue
+
+                EnvoiDiffusion.objects.get_or_create(
+                    canal="ELECTIONS_APPEL",
+                    email_canonique=d["email_canonique"],
+                    defaults={
+                        "email_brut": d["email"],
+                        "nom_destinataire": d["nom"][:160],
+                        "telephone_normalise": d["telephone_normalise"],
+                    },
+                )
+                envoyes.append({"email": d["email"], "nom": d["nom"], "source": d["source"]})
+        except Exception:  # noqa: BLE001
+            logger.exception("Connexion SMTP impossible pour la diffusion élections")
+            return Response(
+                {"detail": "Impossible de se connecter au serveur d'e-mails."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        finally:
+            try:
+                connexion.close()
+            except Exception:  # noqa: BLE001
+                pass
+
+    apres = collecter_tous_destinataires_plateforme()
     return Response({
         "envoyes": envoyes,
         "echecs": echecs,

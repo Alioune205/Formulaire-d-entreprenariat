@@ -855,6 +855,103 @@ class DiffusionWhatsAppTests(APITestCase):
                     obj.photo.delete(save=False)
 
 
+class DiffusionAppelCandidaturesTests(APITestCase):
+    """Diffusion de l'appel à candidatures avec l'affiche à TOUS les e-mails de la plateforme (y compris rejetés)."""
+
+    def setUp(self):
+        cache.clear()
+        self.admin = get_user_model().objects.create_superuser("admin_diff", "admindiff@ciat.sn", "secret123")
+        r = self.client.post("/api/admin/connexion/", {"username": "admin_diff", "password": "secret123"}, format="json")
+        self.auth_headers = {"HTTP_AUTHORIZATION": f"Token {r.data['token']}"}
+
+    def _creer_image(self):
+        import io
+        from PIL import Image
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        f = io.BytesIO()
+        Image.new("RGB", (50, 50), color="brown").save(f, "jpeg")
+        f.seek(0)
+        return SimpleUploadedFile("photo.jpg", f.read(), content_type="image/jpeg")
+
+    def test_diffusion_appel_candidatures_a_tous_sans_doublon(self):
+        from django.core.management import call_command
+        from .models import CandidaturePoste, EnvoiDiffusion
+
+        # 1. Groupe accepté + Groupe rejeté (doit être inclus comme demandé explicitement)
+        ins1 = Inscription.objects.create(
+            nom_groupe="Groupe Vert",
+            nom_projet="AgroBio",
+            email="vert.chef@gmail.com",
+            description_projet="Description projet",
+            engagement=True,
+            statut=Inscription.Statut.ACCEPTE,
+        )
+        Membre.objects.create(inscription=ins1, nom="Sow", prenom="Moussa", departement="TIC", metier="Développement Backend")
+
+        ins_rejet = Inscription.objects.create(
+            nom_groupe="Groupe Non Retenu",
+            nom_projet="Projet Test",
+            email="nonretenu@exemple.sn",
+            description_projet="Description",
+            engagement=True,
+            statut=Inscription.Statut.REJETE,
+        )
+        Membre.objects.create(inscription=ins_rejet, nom="Ba", prenom="Amadou", departement="TIC", metier="Développement Backend")
+
+        # 2. Candidat avec faute de frappe corrigée et candidat avec doublon
+        c_candidat = CandidaturePoste.objects.create(
+            poste="PRESIDENT",
+            nom="Diallo",
+            prenom="Mariama",
+            email="mariama.diallo@gamil.com",  # Coquille corrigée automatiquement en @gmail.com
+            telephone="771234567",
+            departement="TIC",
+            metier="Développement Frontend",
+            profession_de_foi="Porter la voix des étudiants.",
+            photo=self._creer_image(),
+        )
+
+        try:
+            # Vérification de l'aperçu API
+            r_ap = self.client.get("/api/admin/diffusion-elections/apercu/", **self.auth_headers)
+            self.assertEqual(r_ap.status_code, 200)
+            self.assertIn("club-entrepreneuriat-ciat.vercel.app/elections", r_ap.data["html"])
+            self.assertIn("13 postes sont à pourvoir", r_ap.data["html"])
+
+            # Vérification des statistiques de diffusion via API
+            r_get = self.client.get("/api/admin/diffusion-elections/", **self.auth_headers)
+            self.assertEqual(r_get.status_code, 200)
+            # 3 destinataires uniques attendus : vert.chef@gmail.com, nonretenu@exemple.sn, mariama.diallo@gmail.com
+            self.assertEqual(r_get.data["total_uniques"], 3)
+            self.assertEqual(r_get.data["restants"], 3)
+
+            # Test de la commande de management Django
+            mail.outbox.clear()
+            call_command("diffuser_appel_candidatures", limite=2)
+            self.assertEqual(len(mail.outbox), 2)
+            self.assertEqual(EnvoiDiffusion.objects.filter(canal="ELECTIONS_APPEL").count(), 2)
+
+            # Deuxième passage pour terminer le restant
+            call_command("diffuser_appel_candidatures")
+            self.assertEqual(len(mail.outbox), 3)
+            self.assertEqual(EnvoiDiffusion.objects.filter(canal="ELECTIONS_APPEL").count(), 3)
+
+            # Troisième passage -> 0 envoi (anti-doublon garanti)
+            mail.outbox.clear()
+            call_command("diffuser_appel_candidatures")
+            self.assertEqual(len(mail.outbox), 0)  # Aucun nouvel e-mail envoyé car déjà tous notifiés
+
+            # Vérification du contenu
+            from .emails import _message_appel_candidatures
+            m = _message_appel_candidatures("test@isep.sn", "Bonjour Mariama,")
+            self.assertIn("club-entrepreneuriat-ciat.vercel.app/elections", m.body)
+            self.assertIn("13 postes sont à pourvoir", m.body)
+            self.assertIn("lundi à 23h59", m.body)
+        finally:
+            if c_candidat.photo:
+                c_candidat.photo.delete(save=False)
+
+
 
 R2_TEST = dict(R2_ACCOUNT_ID="0123456789abcdef0123456789abcdef", R2_ACCESS_KEY_ID="AKIATEST",
                R2_SECRET_ACCESS_KEY="secret-test", R2_BUCKET="ciat-videos", R2_VIDEO_TAILLE_MAX_MO=100)

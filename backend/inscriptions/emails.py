@@ -23,12 +23,20 @@ from .utils import (
 logger = logging.getLogger(__name__)
 
 LOGO = Path(__file__).resolve().parent / "assets" / "logo-email.png"
+FLYER = Path(__file__).resolve().parent / "assets" / "flyer-email.jpg"
 SIGNATURE = "\n\n— L'équipe du Club d'Entrepreneuriat\nCIAT · ISEP Amadou Trawaré"
 
 
 @lru_cache(maxsize=1)
 def _logo_octets():
     return LOGO.read_bytes()
+
+
+@lru_cache(maxsize=1)
+def _flyer_octets():
+    if FLYER.exists():
+        return FLYER.read_bytes()
+    return b""
 
 
 def apres_reponse(response, fonction, *args):
@@ -52,16 +60,23 @@ def lien_suivi(dossier):
     return f"{settings.FRONTEND_URL.rstrip('/')}/suivi?{params}"
 
 
-def _construire(destinataire, sujet, texte, gabarit, contexte, connection=None):
+def _construire(destinataire, sujet, texte, gabarit, contexte, connection=None, inclure_flyer=False):
     """Construit un e-mail multipart : texte brut + HTML, avec le logo intégré (cid:logo-ciat)."""
     html = render_to_string(gabarit, {"sujet": sujet, **contexte})
     msg = EmailMultiAlternatives(sujet, texte + SIGNATURE, None, [destinataire], connection=connection)
     msg.attach_alternative(html, "text/html")
-    msg.mixed_subtype = "related"  # le logo fait partie du message, ce n'est pas une pièce jointe
+    msg.mixed_subtype = "related"  # les images intégrées font partie du message
     logo = MIMEImage(_logo_octets(), "png")
     logo.add_header("Content-ID", "<logo-ciat>")
     logo.add_header("Content-Disposition", "inline", filename="logo-ciat.png")
     msg.attach(logo)
+    if inclure_flyer:
+        flyer_bytes = _flyer_octets()
+        if flyer_bytes:
+            flyer = MIMEImage(flyer_bytes, "jpeg")
+            flyer.add_header("Content-ID", "<flyer-ciat>")
+            flyer.add_header("Content-Disposition", "inline", filename="flyer-ciat.jpg")
+            msg.attach(flyer)
     return msg
 
 
@@ -382,3 +397,153 @@ def collecter_destinataires_whatsapp():
         "restants": restants,
         "deja_envoyes_count": deja_envoyes.count(),
     }
+
+
+# --- Diffusion Appel à Candidatures Élections (avec Flyer) -------------------
+
+URL_CANDIDATURE_ELECTIONS = "https://club-entrepreneuriat-ciat.vercel.app/elections"
+SUJET_APPEL_CANDIDATURES = "Appel à candidatures — Élections du Bureau et des Chefs de Cellules CIAT 2026-2027"
+
+
+def _message_appel_candidatures(destinataire_email, salutation, connection=None):
+    texte = (
+        f"{salutation}\n\n"
+        "APPEL À CANDIDATURES — ÉLECTIONS DU BUREAU ET DES CHEFS DE CELLULES DU CLUB D'ENTREPRENEURIAT CIAT 2026-2027\n\n"
+        "Tu souhaites contribuer au développement du Club d'Entrepreneuriat du CIAT et participer activement à sa gouvernance ? C'est le moment de te lancer !\n\n"
+        "13 postes sont à pourvoir au sein du bureau exécutif et des différentes cellules.\n\n"
+        "Comment postuler ?\n"
+        "- Choisis un seul poste.\n"
+        "- Prépare une photo nette et une courte vidéo de campagne.\n"
+        "- Soumets ta candidature en ligne avant la date limite.\n\n"
+        f"Lien de candidature :\n{URL_CANDIDATURE_ELECTIONS}\n\n"
+        "Date limite : lundi à 23h59 précises.\n\n"
+        "Ne manque pas cette occasion de faire entendre ta voix, de prendre des responsabilités et de contribuer à l'avenir du club.\n\n"
+        "Innovation • Collaboration • Impact"
+    )
+    contexte = {
+        "apercu": "Appel à candidatures — Élections du Bureau & Chefs de Cellules CIAT (Clôture lundi à 23h59).",
+        "surtitre": "Cohorte 2026-2027 · Élections du Club",
+        "titre": "Appel à candidatures — Élections du Bureau et des Chefs de Cellules",
+        "salutation": salutation,
+        "url_candidature": URL_CANDIDATURE_ELECTIONS,
+    }
+    return _construire(
+        destinataire_email,
+        SUJET_APPEL_CANDIDATURES,
+        texte,
+        "emails/appel_candidatures.html",
+        contexte,
+        connection=connection,
+        inclure_flyer=True,
+    )
+
+
+def envoyer_appel_candidatures(destinataire_email, salutation, connection=None):
+    _message_appel_candidatures(destinataire_email, salutation, connection=connection).send(fail_silently=False)
+
+
+def apercu_appel_candidatures():
+    import base64
+
+    msg = _message_appel_candidatures("etudiant.ciat@isep.sn", "Bonjour Awa Diop,")
+    html = msg.alternatives[0][0]
+    logo = "data:image/png;base64," + base64.b64encode(_logo_octets()).decode()
+    flyer_oct = _flyer_octets()
+    flyer_b64 = ("data:image/jpeg;base64," + base64.b64encode(flyer_oct).decode()) if flyer_oct else ""
+    html = html.replace("cid:logo-ciat", logo)
+    if flyer_b64:
+        html = html.replace("cid:flyer-ciat", flyer_b64)
+    return {
+        "sujet": msg.subject,
+        "destinataire": "Tous les inscrits et candidats de la plateforme (sans doublon)",
+        "html": html,
+    }
+
+
+def collecter_tous_destinataires_plateforme():
+    """Rassemble TOUS les e-mails de la plateforme (y compris les dossiers non retenus/rejetés), sans aucun doublon."""
+    deja_envoyes = EnvoiDiffusion.objects.filter(canal="ELECTIONS_APPEL")
+    emails_deja = set(deja_envoyes.values_list("email_canonique", flat=True))
+    tels_deja = {t for t in deja_envoyes.values_list("telephone_normalise", flat=True) if t}
+
+    uniques = {}
+    tels_vus = set()
+
+    def corriger_email(brut):
+        if not brut:
+            return ""
+        em = brut.strip().lower()
+        typo = domaine_est_faute_frappe(em)
+        if typo:
+            fautif, correct = typo
+            em = em.replace(f"@{fautif}", f"@{correct}")
+        return em
+
+    # 1. Tous les groupes inscrits (y compris REJETE, comme demandé explicitement)
+    inscriptions = (
+        Inscription.objects.exclude(email="")
+        .exclude(email__isnull=True)
+        .prefetch_related("membres")
+        .order_by("cree_le")
+    )
+    for ins in inscriptions:
+        email = corriger_email(ins.email)
+        if not email or "@" not in email:
+            continue
+        canon = normaliser_email_canonique(email)
+        if canon in uniques:
+            continue
+        membres = sorted(ins.membres.all(), key=lambda m: m.id)
+        chef = membres[0] if membres else None
+        nom_complet = f"{chef.prenom} {chef.nom}".strip() if chef else ins.nom_groupe
+        uniques[canon] = {
+            "email": email,
+            "email_canonique": canon,
+            "nom": nom_complet,
+            "telephone_normalise": "",
+            "salutation": f"Bonjour {nom_complet}," if nom_complet else "Bonjour,",
+            "source": f"Inscription ({ins.nom_groupe})",
+        }
+
+    # 2. Tous les candidats aux élections
+    candidats = (
+        CandidaturePoste.objects.exclude(email="")
+        .exclude(email__isnull=True)
+        .order_by("cree_le")
+    )
+    for c in candidats:
+        email = corriger_email(c.email)
+        if not email or "@" not in email:
+            continue
+        canon = normaliser_email_canonique(email)
+        tel_norm = normaliser_telephone(c.telephone)
+        if canon in uniques:
+            if tel_norm and not uniques[canon]["telephone_normalise"]:
+                uniques[canon]["telephone_normalise"] = tel_norm
+                tels_vus.add(tel_norm)
+            continue
+        if tel_norm and tel_norm in tels_vus:
+            continue
+        if tel_norm:
+            tels_vus.add(tel_norm)
+        nom_complet = f"{c.prenom} {c.nom}".strip()
+        uniques[canon] = {
+            "email": email,
+            "email_canonique": canon,
+            "nom": nom_complet,
+            "telephone_normalise": tel_norm,
+            "salutation": f"Bonjour {nom_complet}," if nom_complet else "Bonjour,",
+            "source": f"Candidat ({c.get_poste_display()})",
+        }
+
+    restants = [
+        d for canon, d in uniques.items()
+        if canon not in emails_deja
+        and not (d["telephone_normalise"] and d["telephone_normalise"] in tels_deja)
+    ]
+    return {
+        "tous": list(uniques.values()),
+        "restants": restants,
+        "deja_envoyes_count": deja_envoyes.count(),
+    }
+
