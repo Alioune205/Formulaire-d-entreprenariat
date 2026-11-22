@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   AlertCircle, AlertTriangle, CheckCircle2, ChevronRight, Download, ExternalLink, Eye,
-  Film, Filter, Loader2, RefreshCw, Search, Trash2, User, Video, XCircle, X,
+  Film, Filter, Loader2, RefreshCw, Search, Trash2, Upload, User, Video, XCircle, X,
 } from 'lucide-react';
-import { api, telechargerCsv, urlMedia } from '../../lib/api.js';
+import { api, envoyerVersR2, telechargerCsv, urlMedia } from '../../lib/api.js';
 import { POSTES } from '../../lib/postes.js';
 
 const STATUTS_CONFIG = {
@@ -36,6 +36,89 @@ function PhotoCandidat({ src, prenom, nom, classe }) {
       onError={() => setErreurImg(true)}
       className={`shrink-0 object-cover ${classe}`}
     />
+  );
+}
+
+const TYPES_PAR_EXTENSION = { mp4: 'video/mp4', m4v: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime' };
+
+/**
+ * Ajout (ou remplacement) par l'admin d'une vidéo reçue hors plateforme, par ex. sur WhatsApp.
+ * La vidéo part directement du navigateur de l'admin vers Cloudflare R2, puis est rattachée au candidat.
+ */
+function AjoutVideoAdmin({ candidat, aDejaVideo, onMaj, supprimerSurR2 }) {
+  const entree = useRef(null);
+  const envoiRef = useRef(null);
+  const [etat, setEtat] = useState({ phase: 'repos', progression: 0, message: '' });
+
+  useEffect(() => () => envoiRef.current?.annuler(), []);
+
+  const choisir = async (e) => {
+    const fichier = e.target.files?.[0];
+    e.target.value = '';
+    if (!fichier) return;
+    const ext = fichier.name.split('.').pop()?.toLowerCase() || '';
+    const type = TYPES_PAR_EXTENSION[ext] || fichier.type;
+    if (aDejaVideo && !window.confirm(`Remplacer la vidéo actuelle de ${candidat.prenom} ${candidat.nom} par « ${fichier.name} » ?`)) return;
+    setEtat({ phase: 'envoi', progression: 0, message: '' });
+    try {
+      const autorisation = await api(`/admin/candidatures/${candidat.id}/video-autorisation/`, {
+        method: 'POST', auth: true, body: { nom_fichier: fichier.name, type, taille: fichier.size },
+      });
+      const envoi = envoyerVersR2(fichier, autorisation, (p) => setEtat((x) => ({ ...x, progression: p })));
+      envoiRef.current = envoi;
+      await envoi.promesse;
+      setEtat({ phase: 'envoi', progression: 100, message: 'Enregistrement…' });
+      const maj = await api(`/admin/candidatures/${candidat.id}/attacher-video/`, {
+        method: 'POST', auth: true, body: { jeton: autorisation.jeton },
+      });
+      supprimerSurR2(maj?.r2_suppression_url);
+      onMaj(maj);
+      setEtat({ phase: 'ok', progression: 100, message: 'Vidéo ajoutée à la candidature.' });
+    } catch (err) {
+      if (err.annule) { setEtat({ phase: 'repos', progression: 0, message: '' }); return; }
+      const detail = err.data?.detail || err.message;
+      setEtat({ phase: 'erreur', progression: 0, message: detail });
+    } finally {
+      envoiRef.current = null;
+    }
+  };
+
+  return (
+    <div className="mt-3 rounded-xl border border-dashed border-caramel-300 bg-[#faf6f3] p-3">
+      <input ref={entree} type="file" accept="video/mp4,video/webm,video/quicktime,.mp4,.m4v,.webm,.mov" className="hidden" onChange={choisir} />
+      {etat.phase === 'envoi' ? (
+        <div>
+          <div className="flex items-center justify-between text-xs font-bold text-brun-800">
+            <span className="inline-flex items-center gap-1.5"><Loader2 className="h-3.5 w-3.5 animate-spin" /> {etat.message || 'Envoi de la vidéo…'}</span>
+            <span className="flex items-center gap-2">
+              {etat.progression} %
+              {!etat.message && (
+                <button type="button" onClick={() => envoiRef.current?.annuler()} className="font-semibold text-brun-500 underline hover:text-brun-800">Annuler</button>
+              )}
+            </span>
+          </div>
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-brun-100">
+            <div className="h-full rounded-full bg-caramel-500 transition-all" style={{ width: `${etat.progression}%` }} />
+          </div>
+          <p className="mt-1.5 text-[11px] text-brun-500">Gardez cette fenêtre ouverte jusqu'à la fin de l'envoi.</p>
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-brun-600">
+            {aDejaVideo ? 'Vidéo reçue autrement (WhatsApp…) ? Vous pouvez la remplacer.' : 'Vidéo reçue par WhatsApp ou autre ? Ajoutez-la ici.'}
+          </p>
+          <button
+            type="button"
+            onClick={() => entree.current?.click()}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-caramel-500 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-caramel-600"
+          >
+            <Upload className="h-3.5 w-3.5" /> {aDejaVideo ? 'Remplacer la vidéo' : 'Ajouter la vidéo'}
+          </button>
+        </div>
+      )}
+      {etat.phase === 'ok' && <p className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-emerald-700"><CheckCircle2 className="h-3.5 w-3.5" /> {etat.message}</p>}
+      {etat.phase === 'erreur' && <p className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-red-700"><AlertCircle className="h-3.5 w-3.5" /> {etat.message}</p>}
+    </div>
   );
 }
 
@@ -522,7 +605,7 @@ export default function CandidaturesPostes({ onDeconnexion }) {
                   </div>
                 ) : (candidatSelectionne.video_url || candidatSelectionne.fichier_video) ? (
                   <div className="mt-2">
-                    <video controls className="w-full max-h-56 rounded-xl bg-black">
+                    <video key={candidatSelectionne.video_url || candidatSelectionne.fichier_video} controls className="w-full max-h-56 rounded-xl bg-black">
                       <source src={candidatSelectionne.video_url || urlMedia(candidatSelectionne.fichier_video)} />
                       Votre navigateur ne supporte pas la lecture vidéo.
                     </video>
@@ -530,6 +613,16 @@ export default function CandidaturesPostes({ onDeconnexion }) {
                 ) : (
                   <p className="mt-1 text-xs text-brun-500">Aucune vidéo fournie pour cette candidature.</p>
                 )}
+                <AjoutVideoAdmin
+                  key={candidatSelectionne.id}
+                  candidat={candidatSelectionne}
+                  aDejaVideo={Boolean(candidatSelectionne.lien_video || candidatSelectionne.fichier_video || candidatSelectionne.video_url)}
+                  supprimerSurR2={supprimerSurR2}
+                  onMaj={(maj) => {
+                    setCandidatures((prev) => prev.map((c) => (c.id === maj.id ? maj : c)));
+                    setCandidatSelectionne(maj);
+                  }}
+                />
               </div>
 
               {/* Profession de foi */}

@@ -1077,3 +1077,34 @@ class VideoR2Tests(APITestCase):
                 r = self.client.delete(f"/api/admin/candidatures/{c.id}/", **self.auth)
             self.assertEqual(r.status_code, 204)  # supprimée par le serveur : rien à faire côté navigateur
             self.assertFalse(CandidaturePoste.objects.exists())
+
+    def test_admin_ajoute_video_apres_cloture(self):
+        """Vidéo reçue par WhatsApp : l'admin l'envoie sur R2 et la rattache, même après la clôture."""
+        from unittest import mock
+        with self.settings(**R2_TEST), mock.patch("inscriptions.stockage_r2.verifier_objet", return_value=("injoignable", None)):
+            self.client.post("/api/candidatures/", self._payload(lien_video="https://youtu.be/abc"), format="multipart")
+            c = CandidaturePoste.objects.get()
+            url = f"/api/admin/candidatures/{c.id}/"
+            corps = {"nom_fichier": "whatsapp.mp4", "type": "video/mp4", "taille": 5_000_000}
+            # Réservé aux admins
+            self.assertIn(self.client.post(url + "video-autorisation/", corps, format="json").status_code, (401, 403))
+            with self.settings(DATE_LIMITE_CANDIDATURES="2020-01-01T00:00:00+00:00"):
+                self.assertEqual(self._autorisation().status_code, 403)  # public : clos
+                r = self.client.post(url + "video-autorisation/", corps, format="json", **self.auth)
+                self.assertEqual(r.status_code, 200, r.data)
+                jeton = r.data["jeton"]
+                r = self.client.post(url + "attacher-video/", {"jeton": jeton}, format="json", **self.auth)
+                self.assertEqual(r.status_code, 200, r.data)
+            c.refresh_from_db()
+            self.assertTrue(c.video_r2_cle.startswith("candidatures/videos/"))
+            self.assertEqual(c.lien_video, "")
+            self.assertIn("X-Amz-Signature=", r.data["video_url"])
+            # Remplacement : l'ancienne vidéo R2 est supprimée (par le navigateur si serveur sans accès)
+            ancienne = c.video_r2_cle
+            jeton2 = self.client.post(url + "video-autorisation/", corps, format="json", **self.auth).data["jeton"]
+            with mock.patch("inscriptions.stockage_r2.supprimer_objet", return_value=False):
+                r = self.client.post(url + "attacher-video/", {"jeton": jeton2}, format="json", **self.auth)
+            self.assertIn(ancienne.split("/")[-1], r.data["r2_suppression_url"])
+            # Jeton falsifié refusé
+            r = self.client.post(url + "attacher-video/", {"jeton": "faux"}, format="json", **self.auth)
+            self.assertEqual(r.status_code, 400)

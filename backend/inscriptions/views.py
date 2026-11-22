@@ -119,6 +119,11 @@ def autorisation_video(request):
     """
     if not candidatures_ouvertes():
         return reponse_candidatures_closes()
+    return reponse_autorisation_video(request)
+
+
+def reponse_autorisation_video(request):
+    """Vérifie type et taille annoncés, puis renvoie l'URL d'envoi R2 signée et le jeton."""
     if not stockage_r2.configure():
         return Response({"detail": "L'envoi direct de vidéo n'est pas configuré.", "code": "r2_non_configure"},
                         status=status.HTTP_503_SERVICE_UNAVAILABLE)
@@ -857,6 +862,44 @@ class CandidaturePosteAdminViewSet(viewsets.ModelViewSet):
             candidature.fichier_video = None
         candidature.lien_video = ""
         candidature.video_r2_cle = ""
+        candidature.save(update_fields=["fichier_video", "lien_video", "video_r2_cle", "modifie_le"])
+        return Response({**self.get_serializer(candidature).data, "r2_suppression_url": url_r2})
+
+    @action(detail=True, methods=["post"], url_path="video-autorisation")
+    def video_autorisation(self, request, pk=None):
+        """Étape 1 de l'ajout d'une vidéo par l'admin (ex. reçue par WhatsApp) :
+        URL signée pour l'envoyer directement de son navigateur vers R2.
+        Pas de contrôle de date limite : l'admin peut compléter un dossier après la clôture."""
+        self.get_object()
+        return reponse_autorisation_video(request)
+
+    @action(detail=True, methods=["post"], url_path="attacher-video")
+    def attacher_video(self, request, pk=None):
+        """Étape 2 : rattache la vidéo envoyée sur R2 au candidat (remplace l'ancienne vidéo)."""
+        candidature = self.get_object()
+        try:
+            donnees = signing.loads(str(request.data.get("jeton", "")), salt=SEL_JETON_VIDEO, max_age=6 * 3600)
+        except signing.SignatureExpired:
+            return Response({"detail": "L'envoi a expiré. Recommencez."}, status=status.HTTP_400_BAD_REQUEST)
+        except signing.BadSignature:
+            return Response({"detail": "Jeton de vidéo invalide."}, status=status.HTTP_400_BAD_REQUEST)
+        cle = donnees["cle"]
+        if CandidaturePoste.objects.filter(video_r2_cle=cle).exclude(pk=candidature.pk).exists():
+            return Response({"detail": "Cette vidéo est déjà associée à une autre candidature."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        etat, _taille = stockage_r2.verifier_objet(cle)
+        if etat == "absent":
+            return Response({"detail": "La vidéo n'est pas arrivée sur le stockage. Recommencez l'envoi."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        url_r2 = None
+        if candidature.video_r2_cle and candidature.video_r2_cle != cle:
+            url_r2 = self._supprimer_video_r2(candidature.video_r2_cle)
+        if candidature.fichier_video:
+            candidature.fichier_video.delete(save=False)
+            candidature.fichier_video = None
+        candidature.video_r2_cle = cle
+        candidature.lien_video = ""
         candidature.save(update_fields=["fichier_video", "lien_video", "video_r2_cle", "modifie_le"])
         return Response({**self.get_serializer(candidature).data, "r2_suppression_url": url_r2})
 
