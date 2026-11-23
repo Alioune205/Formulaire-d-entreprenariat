@@ -89,15 +89,26 @@ export default function FormulaireCandidature({ posteInitial, onFermer, onSucces
     }
   };
 
-  const handlePhotoSelect = (e) => {
+  const handlePhotoSelect = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 6 * 1024 * 1024) {
       setErreur('La photo ne doit pas dépasser 6 Mo.');
       return;
     }
-    setPhotoFichier(file);
-    setPhotoApercu(URL.createObjectURL(file));
+    // Sur Android (Google Photos, Drive, WhatsApp…), le fichier choisi n'est qu'une référence
+    // qui peut devenir illisible avant l'envoi : Chrome annule alors la requête (« Failed to fetch »).
+    // On copie donc la photo en mémoire tout de suite.
+    let copie;
+    try {
+      const octets = await file.arrayBuffer();
+      copie = new File([octets], file.name || 'photo.jpg', { type: file.type || 'image/jpeg' });
+    } catch {
+      setErreur('Impossible de lire cette photo. Choisissez-en une autre (de préférence enregistrée sur le téléphone).');
+      return;
+    }
+    setPhotoFichier(copie);
+    setPhotoApercu(URL.createObjectURL(copie));
     setErreur('');
   };
 
@@ -175,10 +186,14 @@ export default function FormulaireCandidature({ posteInitial, onFermer, onSucces
         }
       }
 
-      await api('/candidatures/', {
-        method: 'POST',
-        body: formData,
-      });
+      try {
+        await api('/candidatures/', { method: 'POST', body: formData });
+      } catch (premiere) {
+        if (premiere instanceof ErreurApi) throw premiere;
+        // Coupure réseau passagère : une seconde tentative après 2 s.
+        await new Promise((r) => setTimeout(r, 2000));
+        await api('/candidatures/', { method: 'POST', body: formData });
+      }
 
       setTermine(true);
       if (onSucces) onSucces();
@@ -190,7 +205,7 @@ export default function FormulaireCandidature({ posteInitial, onFermer, onSucces
             : err.status >= 500
               ? 'Le serveur a rencontré une erreur temporaire. Veuillez réessayer dans quelques instants.'
               : err.message || 'Vérifiez les informations saisies et réessayez.'
-          : 'Impossible de joindre le serveur. Vérifiez votre connexion Internet.'
+          : `Impossible de joindre le serveur. Vérifiez votre connexion, puis rechoisissez votre photo et réessayez. (${err?.message || 'erreur réseau'})`
       );
       if (formScrollRef.current) {
         formScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
