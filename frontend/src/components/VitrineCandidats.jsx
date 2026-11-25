@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { ArrowRight, ExternalLink, Loader2, PlayCircle, Video, Vote } from 'lucide-react';
 import { api, urlMedia } from '../lib/api.js';
 
@@ -105,10 +105,18 @@ export default function VitrineCandidats({ vote }) {
   const [postes, setPostes] = useState(null);
   const [filtre, setFiltre] = useState('TOUS');
   const haut = useRef(null);
+  const { hash } = useLocation();
 
   useEffect(() => {
     api('/vote/bulletin/').then((d) => setPostes(d.postes)).catch(() => setPostes([]));
   }, []);
+
+  // Arrivée par un lien « /#candidats » : on descend jusqu'à la vitrine une fois la liste chargée.
+  useEffect(() => {
+    if (hash !== '#candidats' || postes === null) return undefined;
+    const t = setTimeout(() => haut.current?.scrollIntoView({ block: 'start' }), 150);
+    return () => clearTimeout(t);
+  }, [hash, postes]);
 
   // Dans chaque poste, les candidats avec vidéo passent devant.
   const tries = useMemo(() => (postes ?? []).map((p) => ({

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { Award, Briefcase, Calendar, CheckCircle2, ChevronRight, Filter, ShieldCheck, Users, Vote } from 'lucide-react';
 import Navbar from '../components/Navbar.jsx';
 import Footer from '../components/Footer.jsx';
@@ -51,6 +51,10 @@ export default function Elections() {
     setPosteSelectionne(poste);
     setModalOuverte(true);
   };
+
+  // Candidatures closes : la page de dépôt n'a plus d'objet, on renvoie vers la vitrine des candidats
+  // (les anciens liens partagés sur WhatsApp mènent ainsi au bon endroit).
+  if (!elections.ouvert) return <Navigate to={{ pathname: '/', hash: '#candidats' }} replace />;
 
   return (
     <>

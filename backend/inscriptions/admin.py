@@ -1,6 +1,9 @@
 from django.contrib import admin
 
-from .models import CandidaturePoste, CompteurVoix, Emargement, EnvoiDiffusion, Inscription, Membre, ModeleEmail, ParametresPlateforme
+from .models import (
+    CandidaturePoste, CompteurVoix, Emargement, EnvoiDiffusion, HorairesVote, Inscription, Membre, ModeleEmail,
+    ModificationHorairesVote, ParametresPlateforme,
+)
 
 
 class MembreInline(admin.TabularInline):
@@ -71,6 +74,27 @@ class CompteurVoixAdmin(admin.ModelAdmin):
     """Urne : lecture seule, pour éviter toute modification manuelle des voix."""
     list_display = ("poste", "choix", "candidature", "voix")
     list_filter = ("poste",)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(HorairesVote)
+class HorairesVoteAdmin(admin.ModelAdmin):
+    """À modifier de préférence depuis l'onglet « Vote & résultats » du site (modification journalisée)."""
+    list_display = ("debut", "fin", "modifie_le")
+
+
+@admin.register(ModificationHorairesVote)
+class ModificationHorairesVoteAdmin(admin.ModelAdmin):
+    """Journal des changements d'horaires : lecture seule."""
+    list_display = ("le", "par", "debut_apres", "fin_apres", "motif")
 
     def has_add_permission(self, request):
         return False

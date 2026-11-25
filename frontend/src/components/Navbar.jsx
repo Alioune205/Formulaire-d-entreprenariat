@@ -1,5 +1,5 @@
 import { Link, NavLink } from 'react-router-dom';
-import { FileSearch, Vote } from 'lucide-react';
+import { FileSearch, Users } from 'lucide-react';
 
 export default function Navbar() {
   return (
@@ -9,23 +9,13 @@ export default function Navbar() {
           <img src="/logo-ciat.png" alt="CIAT — ISEP Amadou Trawaré" className="h-9 w-auto sm:h-10" />
         </Link>
         <nav className="flex items-center gap-1.5 text-sm font-semibold sm:gap-2">
-          <NavLink
-            to="/elections"
-            className={({ isActive }) =>
-              `inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold shadow-sm transition sm:text-sm ${
-                isActive
-                  ? 'bg-brun-800 text-white ring-2 ring-caramel-400'
-                  : 'bg-brun-800 text-white hover:bg-brun-700'
-              }`
-            }
+          <Link
+            to={{ pathname: '/', hash: '#candidats' }}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-brun-800 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-brun-700 sm:text-sm"
           >
-            <Vote className="h-4 w-4 shrink-0 text-caramel-300" />
-            <span>Élections</span>
-            <span className="hidden md:inline">& Votes</span>
-          </NavLink>
-          <a href="/#candidats" className="hidden rounded-lg px-3 py-2 text-brun-700 hover:bg-brun-50 md:block">
-            Les candidats
-          </a>
+            <Users className="h-4 w-4 shrink-0 text-caramel-300" />
+            <span>Candidats</span>
+          </Link>
           <NavLink
             to="/suivi"
             className={({ isActive }) =>

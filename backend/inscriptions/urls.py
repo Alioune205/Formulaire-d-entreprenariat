@@ -30,5 +30,6 @@ urlpatterns = [
     path("vote/voter/", vote.voter, name="vote-voter"),
     path("admin/vote/", vote.admin_vote, name="admin-vote"),
     path("admin/vote/emargement/", vote.admin_emargement, name="admin-vote-emargement"),
+    path("admin/vote/horaires/", vote.admin_horaires, name="admin-vote-horaires"),
     path("", include(router.urls)),
 ]

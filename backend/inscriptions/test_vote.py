@@ -130,3 +130,42 @@ class VoteTests(TestCase):
         r = self.client.get("/api/admin/vote/emargement/")
         self.assertEqual(len(r.data), 2)
         self.assertNotIn("choix", r.data[0])
+
+
+@override_settings(THROTTLE_DISABLED=True)
+class HorairesVoteTests(TestCase):
+    URL = "/api/admin/vote/horaires/"
+
+    def setUp(self):
+        self.admin = APIClient()
+        self.admin.force_authenticate(User.objects.create_user("commission", password="x", is_staff=True))
+
+    @override_settings(**AVANT)
+    def test_avant_ouverture_on_peut_tout_modifier_avec_motif(self):
+        self.assertIn(APIClient().post(self.URL, {}, format="json").status_code, (401, 403))
+        r = self.admin.post(self.URL, {"fin": "2099-12-31T20:00:00"}, format="json")
+        self.assertEqual(r.status_code, 400)  # motif manquant
+        r = self.admin.post(self.URL, {"debut": "2099-01-02T08:00:00", "fin": "2099-12-31T20:00:00",
+                                       "motif": "Décision de la commission"}, format="json")
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertTrue(r.json()["vote_fin"].startswith("2099-12-31T20:00:00"))
+        self.assertEqual(len(r.json()["journal"]), 1)
+        publiques = APIClient().get("/api/vote/bulletin/").json()
+        self.assertTrue(publiques["vote_debut"].startswith("2099-01-02T08:00:00"))
+
+    @override_settings(**OUVERT)
+    def test_pendant_le_vote_on_prolonge_mais_ouverture_figee(self):
+        r = self.admin.post(self.URL, {"debut": "2001-01-01T00:00:00", "motif": "Essai ouverture"}, format="json")
+        self.assertEqual(r.status_code, 400)
+        r = self.admin.post(self.URL, {"fin": "2099-12-31T23:59:59+00:00", "motif": "Prolongation commission"},
+                            format="json")
+        self.assertEqual(r.status_code, 200, r.content)
+        r = self.admin.post(self.URL, {"clore_maintenant": True, "motif": "Clôture anticipée"}, format="json")
+        self.assertEqual(r.json()["vote_etat"], "clos")
+        r = self.admin.post(self.URL, {"fin": "2099-12-31T23:59:59", "motif": "Réouverture"}, format="json")
+        self.assertEqual(r.status_code, 409)
+
+    @override_settings(**CLOS)
+    def test_vote_clos_verrouille(self):
+        r = self.admin.post(self.URL, {"fin": "2099-12-31T23:59:59", "motif": "Réouverture"}, format="json")
+        self.assertEqual(r.status_code, 409)

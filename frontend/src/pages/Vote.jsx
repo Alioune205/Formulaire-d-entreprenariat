@@ -246,7 +246,7 @@ export default function Vote() {
             ? <>Ouverture le <strong>{formatDate(infos.vote_debut)}</strong>, clôture le <strong>{formatDate(infos.vote_fin)}</strong>.</>
             : 'Merci à toutes et à tous pour votre participation. Les résultats seront annoncés par la commission électorale.'}
         </p>
-        <Link to="/elections" className="btn-secondaire mt-6 inline-flex">Découvrir les candidats</Link>
+        <Link to={{ pathname: '/', hash: '#candidats' }} className="btn-secondaire mt-6 inline-flex">Découvrir les candidats</Link>
       </div>
     );
   } else if (etape === 0) {

@@ -29,7 +29,10 @@ from rest_framework.throttling import SimpleRateThrottle
 
 from . import stockage_r2
 from .emails import apres_reponse, envoyer_code_vote
-from .models import CandidaturePoste, CodeVote, CompteurVoix, Emargement, Inscription, Membre
+from .models import (
+    CandidaturePoste, CodeVote, CompteurVoix, Emargement, HorairesVote, Inscription, Membre,
+    ModificationHorairesVote,
+)
 from .postes import POSTES_CATALOGUE
 from .utils import domaine_est_faute_frappe, normaliser_email_canonique
 
@@ -42,25 +45,35 @@ ALPHABET_RECU = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
 
 # --- Calendrier -------------------------------------------------------------------------------
 
+def horaires_vote():
+    """(début, fin) : horaires réglés dans le back-office, sinon VOTE_DEBUT / VOTE_FIN des réglages."""
+    h = HorairesVote.obtenir()
+    debut = h.debut if h and h.debut else datetime.fromisoformat(settings.VOTE_DEBUT)
+    fin = h.fin if h and h.fin else datetime.fromisoformat(settings.VOTE_FIN)
+    return debut, fin
+
+
 def vote_debut():
-    return datetime.fromisoformat(settings.VOTE_DEBUT)
+    return horaires_vote()[0]
 
 
 def vote_fin():
-    return datetime.fromisoformat(settings.VOTE_FIN)
+    return horaires_vote()[1]
 
 
 def etat_vote(maintenant=None):
     maintenant = maintenant or timezone.now()
-    if maintenant < vote_debut():
+    debut, fin = horaires_vote()
+    if maintenant < debut:
         return "avant"
-    if maintenant <= vote_fin():
+    if maintenant <= fin:
         return "ouvert"
     return "clos"
 
 
 def infos_vote():
-    return {"vote_debut": vote_debut().isoformat(), "vote_fin": vote_fin().isoformat(), "vote_etat": etat_vote()}
+    debut, fin = horaires_vote()
+    return {"vote_debut": debut.isoformat(), "vote_fin": fin.isoformat(), "vote_etat": etat_vote()}
 
 
 def _reponse_vote_ferme():
@@ -417,3 +430,74 @@ def admin_emargement(request):
          "type": "Candidat" if e.candidature_id else "Membre"}
         for e in Emargement.objects.all()
     ])
+
+
+def _lire_date(valeur, champ):
+    try:
+        d = datetime.fromisoformat(str(valeur))
+    except (TypeError, ValueError):
+        raise ValueError(f"Date de {champ} invalide.")
+    if timezone.is_naive(d):
+        d = d.replace(tzinfo=dt_timezone.utc)  # heure de Dakar = UTC
+    return d
+
+
+def _journal_horaires():
+    return [
+        {"par": m.par, "motif": m.motif, "le": m.le, "debut_avant": m.debut_avant, "fin_avant": m.fin_avant,
+         "debut_apres": m.debut_apres, "fin_apres": m.fin_apres}
+        for m in ModificationHorairesVote.objects.all()
+    ]
+
+
+@api_view(["GET", "POST"])
+@permission_classes([permissions.IsAdminUser])
+def admin_horaires(request):
+    """GET/POST /api/admin/vote/horaires/ — prolonger, avancer ou clore le vote depuis le back-office.
+
+    Règles : motif obligatoire (journalisé) ; l'ouverture ne bouge plus une fois le vote commencé ;
+    plus aucune modification une fois le vote clos (les résultats sont alors visibles).
+    """
+    if request.method == "GET":
+        return Response({**infos_vote(), "journal": _journal_horaires()})
+
+    maintenant = timezone.now()
+    etat = etat_vote(maintenant)
+    debut_avant, fin_avant = horaires_vote()
+    if etat == "clos":
+        return Response({"detail": "Le vote est clos : ses horaires ne peuvent plus être modifiés."},
+                        status=status.HTTP_409_CONFLICT)
+
+    motif = str(request.data.get("motif", "")).strip()
+    if len(motif) < 5:
+        return Response({"detail": "Indiquez le motif de la modification (décision de la commission…)."},
+                        status=status.HTTP_400_BAD_REQUEST)
+    try:
+        debut = _lire_date(request.data.get("debut", debut_avant.isoformat()), "début")
+        if request.data.get("clore_maintenant"):
+            fin = maintenant
+        else:
+            fin = _lire_date(request.data.get("fin", fin_avant.isoformat()), "fin")
+    except ValueError as e:
+        return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    if etat == "ouvert" and abs((debut - debut_avant).total_seconds()) >= 60:
+        return Response({"detail": "Le vote a déjà commencé : l'heure d'ouverture ne peut plus changer."},
+                        status=status.HTTP_400_BAD_REQUEST)
+    if etat == "ouvert":
+        debut = debut_avant
+    if fin <= debut:
+        return Response({"detail": "La clôture doit être après l'ouverture."}, status=status.HTTP_400_BAD_REQUEST)
+    if fin < maintenant - timedelta(minutes=1):
+        return Response({"detail": "La clôture ne peut pas être dans le passé (utilisez « Clore maintenant »)."},
+                        status=status.HTTP_400_BAD_REQUEST)
+    if etat == "avant" and debut < maintenant - timedelta(minutes=1):
+        debut = maintenant  # ouverture avancée à « maintenant » au plus tôt
+
+    with transaction.atomic():
+        HorairesVote.objects.update_or_create(id=1, defaults={"debut": debut, "fin": fin})
+        ModificationHorairesVote.objects.create(
+            par=request.user.get_username(), motif=motif[:1000],
+            debut_avant=debut_avant, fin_avant=fin_avant, debut_apres=debut, fin_apres=fin,
+        )
+    return Response({**infos_vote(), "journal": _journal_horaires()})

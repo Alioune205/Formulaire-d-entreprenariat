@@ -317,6 +317,42 @@ class ParametresPlateforme(models.Model):
         return obj
 
 
+class HorairesVote(models.Model):
+    """Horaires du scrutin modifiés depuis le back-office (vides = valeurs VOTE_DEBUT/VOTE_FIN des réglages)."""
+
+    debut = models.DateTimeField("ouverture du vote", null=True, blank=True)
+    fin = models.DateTimeField("clôture du vote", null=True, blank=True)
+    modifie_le = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "horaires du vote"
+        verbose_name_plural = "horaires du vote"
+
+    def __str__(self):
+        return f"Vote : {self.debut} → {self.fin}"
+
+    @classmethod
+    def obtenir(cls):
+        return cls.objects.filter(id=1).first()
+
+
+class ModificationHorairesVote(models.Model):
+    """Journal (non modifiable) de chaque changement d'horaires du vote, pour la commission électorale."""
+
+    par = models.CharField("modifié par", max_length=150)
+    motif = models.TextField("motif")
+    debut_avant = models.DateTimeField()
+    fin_avant = models.DateTimeField()
+    debut_apres = models.DateTimeField()
+    fin_apres = models.DateTimeField()
+    le = models.DateTimeField("modifié le", auto_now_add=True)
+
+    class Meta:
+        ordering = ["-le"]
+        verbose_name = "modification des horaires du vote"
+        verbose_name_plural = "journal des horaires du vote"
+
+
 class EnvoiDiffusion(models.Model):
     """Journal persistant des diffusions par e-mail pour empêcher tout envoi en double."""
 

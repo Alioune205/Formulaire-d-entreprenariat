@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AlertCircle, AlertTriangle, Award, Loader2, Lock, Printer, RefreshCw, Search } from 'lucide-react';
 import { api, ErreurApi } from '../../lib/api.js';
+import HorairesVote from './HorairesVote.jsx';
 
 const BARRE = '#5f3b28';
 const ETATS = {
@@ -146,6 +147,8 @@ export default function ResultatsVote({ onDeconnexion }) {
         </div>
         <div className="mt-4"><Barre valeur={donnees.votants} total={donnees.electeurs} /></div>
       </section>
+
+      <HorairesVote onMaj={charger} onDeconnexion={onDeconnexion} />
 
       {donnees.resultats ? (
         <div className="space-y-4">
