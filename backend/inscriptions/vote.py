@@ -413,14 +413,16 @@ def calculer_resultats():
 @api_view(["GET"])
 @permission_classes([permissions.IsAdminUser])
 def admin_vote(request):
-    """GET /api/admin/vote/ — participation en direct ; résultats seulement après la clôture."""
+    """GET /api/admin/vote/ — participation et résultats en direct (provisoires jusqu'à la clôture)."""
     etat = etat_vote()
     return Response({
         **infos_vote(),
         "votants": Emargement.objects.count(),
         "electeurs": nombre_electeurs(),
         "postes_au_vote": len(postes_du_bulletin()),
-        "resultats": calculer_resultats() if etat == "clos" else None,
+        # Résultats visibles par l'admin dès l'ouverture : provisoires tant que le vote n'est pas clos.
+        "resultats": calculer_resultats() if etat != "avant" else None,
+        "resultats_provisoires": etat == "ouvert",
     })
 
 
@@ -504,3 +506,87 @@ def admin_horaires(request):
             debut_avant=debut_avant, fin_avant=fin_avant, debut_apres=debut, fin_apres=fin,
         )
     return Response({**infos_vote(), "journal": _journal_horaires()})
+
+
+# --- Électeurs ajoutés par la commission (nouveaux membres absents des groupes inscrits) ---------
+
+GROUPE_AJOUTS = "Nouveaux membres (ajout commission)"
+
+
+def groupe_ajouts():
+    groupe = Inscription.objects.filter(nom_groupe=GROUPE_AJOUTS).first()
+    if groupe:
+        return groupe
+    return Inscription.objects.create(
+        nom_groupe=GROUPE_AJOUTS, nom_projet="Électeurs ajoutés par la commission électorale",
+        description_projet="Membres ayant rejoint le club après les inscriptions, ajoutés à la liste électorale.",
+        engagement=True, statut=Inscription.Statut.ACCEPTE,
+    )
+
+
+def _electeurs_ajoutes():
+    groupe = Inscription.objects.filter(nom_groupe=GROUPE_AJOUTS).first()
+    if not groupe:
+        return []
+    return [
+        {"id": m.id, "prenom": m.prenom, "nom": m.nom, "a_vote": hasattr(m, "emargement")}
+        for m in groupe.membres.select_related("emargement").order_by("-id")
+    ]
+
+
+def _decouper_nom(ligne):
+    """« Mamadou Lamine Fall » -> ("Mamadou Lamine", "Fall"). L'ordre importe peu : la comparaison l'ignore."""
+    mots = ligne.replace(";", " ").replace(",", " ").split()
+    if len(mots) < 2 or not cle_nom(*mots):
+        return None
+    return " ".join(mots[:-1])[:80], mots[-1][:80]
+
+
+@api_view(["GET", "POST"])
+@permission_classes([permissions.IsAdminUser])
+def admin_electeurs(request):
+    """GET/POST /api/admin/vote/electeurs/ — ajouter des électeurs (un « Prénom Nom » par ligne)."""
+    if request.method == "POST":
+        if etat_vote() == "clos":
+            return Response({"detail": "Le vote est clos : la liste électorale ne peut plus changer."},
+                            status=status.HTTP_409_CONFLICT)
+        lignes = [l.strip() for l in str(request.data.get("lignes", "")).splitlines() if l.strip()]
+        if not lignes:
+            return Response({"detail": "Écrivez au moins un « Prénom Nom »."}, status=status.HTTP_400_BAD_REQUEST)
+        if len(lignes) > 300:
+            return Response({"detail": "300 noms maximum à la fois."}, status=status.HTTP_400_BAD_REQUEST)
+        connus = {cle_nom(m.prenom, m.nom) for m in membres_eligibles()}
+        connus |= {cle_nom(c.prenom, c.nom) for c in candidatures_en_lice()}
+        ajoutes, ignores = [], []
+        groupe = None
+        for ligne in lignes:
+            nom = _decouper_nom(ligne)
+            if not nom:
+                ignores.append({"ligne": ligne, "raison": "Il faut au moins un prénom et un nom."})
+                continue
+            cle = cle_nom(*nom)
+            if cle in connus:
+                ignores.append({"ligne": ligne, "raison": "Déjà sur la liste électorale."})
+                continue
+            groupe = groupe or groupe_ajouts()
+            Membre.objects.create(inscription=groupe, prenom=nom[0], nom=nom[1],
+                                  departement="Non renseigné", metier="Non renseigné")
+            connus.add(cle)
+            ajoutes.append(f"{nom[0]} {nom[1]}")
+        return Response({"ajoutes": ajoutes, "ignores": ignores, "electeurs": _electeurs_ajoutes(),
+                         "total_electeurs": nombre_electeurs()})
+    return Response({"electeurs": _electeurs_ajoutes(), "total_electeurs": nombre_electeurs()})
+
+
+@api_view(["DELETE"])
+@permission_classes([permissions.IsAdminUser])
+def admin_electeur_supprimer(request, pk):
+    """DELETE /api/admin/vote/electeurs/<id>/ — retirer un électeur ajouté (erreur de saisie), s'il n'a pas voté."""
+    membre = Membre.objects.filter(pk=pk, inscription__nom_groupe=GROUPE_AJOUTS).select_related("emargement").first()
+    if not membre:
+        return Response({"detail": "Électeur introuvable."}, status=status.HTTP_404_NOT_FOUND)
+    if hasattr(membre, "emargement"):
+        return Response({"detail": "Cette personne a déjà voté : elle ne peut plus être retirée."},
+                        status=status.HTTP_409_CONFLICT)
+    membre.delete()
+    return Response({"electeurs": _electeurs_ajoutes(), "total_electeurs": nombre_electeurs()})

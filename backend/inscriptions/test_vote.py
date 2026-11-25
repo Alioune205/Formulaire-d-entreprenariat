@@ -107,7 +107,7 @@ class VoteTests(TestCase):
         with override_settings(**CLOS):
             self.assertEqual(self.demander("awa@ex.com", "Awa", "Ndiaye").status_code, 403)
 
-    def test_resultats_admin_uniquement_apres_cloture(self):
+    def test_resultats_admin_provisoires_pendant_le_vote(self):
         for email, prenom, nom, choix in [
             ("awa@ex.com", "Awa", "Ndiaye", {"PRESIDENT": str(self.p1.id), "TRESORIER": "POUR"}),
             ("m@ex.com", "Mamadou Lamine", "Fall", {"PRESIDENT": str(self.p1.id), "TRESORIER": "CONTRE"}),
@@ -120,7 +120,10 @@ class VoteTests(TestCase):
         self.client.force_authenticate(admin)
         r = self.client.get("/api/admin/vote/")
         self.assertEqual(r.data["votants"], 2)
-        self.assertIsNone(r.data["resultats"])
+        self.assertTrue(r.data["resultats_provisoires"])
+        self.assertEqual(r.data["resultats"][0]["candidats"][0]["voix"], 2)
+        with override_settings(**AVANT):
+            self.assertIsNone(self.client.get("/api/admin/vote/").data["resultats"])
         with override_settings(**CLOS):
             r = self.client.get("/api/admin/vote/")
         pres, tres = r.data["resultats"]
@@ -169,3 +172,32 @@ class HorairesVoteTests(TestCase):
     def test_vote_clos_verrouille(self):
         r = self.admin.post(self.URL, {"fin": "2099-12-31T23:59:59", "motif": "Réouverture"}, format="json")
         self.assertEqual(r.status_code, 409)
+
+
+@override_settings(**OUVERT, THROTTLE_DISABLED=True)
+class ElecteursAjoutesTests(TestCase):
+    URL = "/api/admin/vote/electeurs/"
+
+    def setUp(self):
+        groupe = Inscription.objects.create(nom_groupe="G1", nom_projet="P1", description_projet="d")
+        Membre.objects.create(inscription=groupe, prenom="Awa", nom="Ndiaye", departement="TIC", metier="Dev")
+        self.admin = APIClient()
+        self.admin.force_authenticate(User.objects.create_user("commission", password="x", is_staff=True))
+
+    def test_ajout_puis_vote_et_doublons(self):
+        self.assertIn(APIClient().post(self.URL, {"lignes": "A B"}, format="json").status_code, (401, 403))
+        r = self.admin.post(self.URL, {"lignes": "Mamadou Lamine Fall" + chr(10) + "ndiaye awa" + chr(10) + "Seul" + chr(10) + "mamadou lamine FALL"},
+                            format="json")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.data["ajoutes"], ["Mamadou Lamine Fall"])
+        self.assertEqual(len(r.data["ignores"]), 3)  # Awa déjà inscrite, nom incomplet, doublon
+        self.assertEqual(r.data["total_electeurs"], 2)
+        # le nouvel électeur peut demander son code
+        with mock.patch("inscriptions.models.secrets.randbelow", return_value=123456):
+            r = APIClient().post("/api/vote/demande/", {"email": "mlf@ex.com", "prenom": "Mamadou", "nom": "Lamine Fall"},
+                                 format="json")
+        self.assertEqual(r.status_code, 200, r.content)
+        # retrait possible tant qu'il n'a pas voté
+        mid = self.admin.get(self.URL).data["electeurs"][0]["id"]
+        self.assertEqual(self.admin.delete(f"{self.URL}{mid}/").status_code, 200)
+        self.assertEqual(self.admin.get(self.URL).data["electeurs"], [])

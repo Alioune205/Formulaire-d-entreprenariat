@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { AlertCircle, AlertTriangle, Award, Loader2, Lock, Printer, RefreshCw, Search } from 'lucide-react';
 import { api, ErreurApi } from '../../lib/api.js';
 import HorairesVote from './HorairesVote.jsx';
+import ElecteursAjoutes from './ElecteursAjoutes.jsx';
 
 const BARRE = '#5f3b28';
 const ETATS = {
@@ -26,7 +27,7 @@ function Barre({ valeur, total, couleur = BARRE }) {
   );
 }
 
-function ResultatPoste({ r }) {
+function ResultatPoste({ r, provisoire }) {
   return (
     <section className="break-inside-avoid rounded-2xl border border-brun-100 bg-white p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -35,7 +36,7 @@ function ResultatPoste({ r }) {
       </div>
       {r.egalite && (
         <p className="mt-3 flex items-center gap-2 rounded-xl bg-amber-50 p-3 text-sm font-semibold text-amber-800">
-          <AlertTriangle className="h-4 w-4" /> Égalité en tête : la commission électorale doit trancher.
+          <AlertTriangle className="h-4 w-4" /> Égalité en tête{provisoire ? ' pour l’instant.' : ' : la commission électorale doit trancher.'}
         </p>
       )}
       {r.candidat_unique ? (
@@ -43,8 +44,8 @@ function ResultatPoste({ r }) {
           <p className="font-bold text-brun-800">
             {r.candidats[0].prenom} {r.candidats[0].nom} (candidat unique)
             {r.candidats[0].elu
-              ? <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-extrabold text-emerald-700">ÉLU(E)</span>
-              : <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-extrabold text-red-700">NON ÉLU(E)</span>}
+              ? <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-extrabold text-emerald-700">{provisoire ? 'MAJORITÉ POUR' : 'ÉLU(E)'}</span>
+              : <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-extrabold text-red-700">{provisoire ? 'PAS DE MAJORITÉ' : 'NON ÉLU(E)'}</span>}
           </p>
           {[['Pour', r.pour, '#15803d'], ['Contre', r.contre, '#b91c1c'], ['Blanc', r.blancs, '#a8a29e']].map(([lib, v, c]) => (
             <div key={lib} className="grid grid-cols-[70px_1fr_90px] items-center gap-3 text-sm">
@@ -133,7 +134,7 @@ export default function ResultatsVote({ onDeconnexion }) {
             <button type="button" onClick={charger} disabled={chargement} className="btn-secondaire">
               <RefreshCw className={`h-4 w-4 ${chargement ? 'animate-spin' : ''}`} /> Actualiser
             </button>
-            {donnees.resultats && (
+            {donnees.resultats && !donnees.resultats_provisoires && (
               <button type="button" onClick={() => window.print()} className="btn-primaire">
                 <Printer className="h-4 w-4" /> Imprimer le PV
               </button>
@@ -149,18 +150,26 @@ export default function ResultatsVote({ onDeconnexion }) {
       </section>
 
       <HorairesVote onMaj={charger} onDeconnexion={onDeconnexion} />
+      <ElecteursAjoutes onMaj={charger} onDeconnexion={onDeconnexion} />
 
       {donnees.resultats ? (
         <div className="space-y-4">
-          <h3 className="text-xl font-extrabold text-brun-800">Procès-verbal des résultats</h3>
-          {donnees.resultats.map((r) => <ResultatPoste key={r.code} r={r} />)}
+          {donnees.resultats_provisoires ? (
+            <div>
+              <h3 className="text-xl font-extrabold text-brun-800">Résultats provisoires · vote en cours</h3>
+              <p className="mt-1 text-sm text-brun-500">Mis à jour chaque minute. Ils peuvent encore changer : les résultats définitifs seront connus à la clôture.</p>
+            </div>
+          ) : (
+            <h3 className="text-xl font-extrabold text-brun-800">Procès-verbal des résultats</h3>
+          )}
+          {donnees.resultats.map((r) => <ResultatPoste key={r.code} r={r} provisoire={donnees.resultats_provisoires} />)}
         </div>
       ) : (
         <section className="flex items-start gap-3 rounded-2xl border border-brun-100 bg-brun-50/60 p-6 text-brun-700">
           <Lock className="mt-0.5 h-5 w-5 shrink-0" />
           <p className="text-sm">
-            <strong>Les résultats restent scellés jusqu’à la clôture</strong> ({formatDate(donnees.vote_fin)}).
-            Personne, même l’administrateur, ne peut les consulter avant : cela garantit l’équité du scrutin.
+            <strong>Le vote n’a pas encore commencé.</strong> Les résultats s’afficheront ici en direct dès l’ouverture
+            ({formatDate(donnees.vote_debut)}).
           </p>
         </section>
       )}

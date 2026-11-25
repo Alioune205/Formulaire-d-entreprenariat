@@ -98,7 +98,7 @@ export default function HorairesVote({ onMaj, onDeconnexion }) {
       {clos ? (
         <p className="mt-3 flex items-start gap-2 rounded-xl bg-brun-50 p-4 text-sm text-brun-700">
           <Lock className="mt-0.5 h-4 w-4 shrink-0" />
-          Le vote est clos : les horaires sont verrouillés car les résultats sont désormais visibles.
+          Le vote est clos : les horaires sont verrouillés et les résultats sont définitifs.
         </p>
       ) : (
         <>
