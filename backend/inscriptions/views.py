@@ -32,6 +32,7 @@ from .models import (
 )
 from . import stockage_r2
 from .genre import genre_effectif
+from .vote import infos_vote
 from .postes import POSTES_CATALOGUE
 from .recap import calculer_recap
 from .serializers import (
@@ -79,6 +80,7 @@ def infos_publiques(request):
         # Vidéos de campagne : envoi direct vers Cloudflare R2 si configuré
         "video_envoi_direct": stockage_r2.configure(),
         "video_taille_max_mo": settings.R2_VIDEO_TAILLE_MAX_MO if stockage_r2.configure() else 25,
+        **infos_vote(),
     })
 
 

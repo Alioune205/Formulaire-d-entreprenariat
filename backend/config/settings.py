@@ -140,6 +140,11 @@ REST_FRAMEWORK = {
         "recuperation_verification": _env("LIMITE_RECUP_VERIF", "120/minute"),
         # Demandes d'URL d'envoi de vidéo vers R2 (Wi-Fi ISEP partagé : limite large)
         "video_autorisation": _env("LIMITE_VIDEO_AUTORISATION", "60/hour"),
+        # Vote : tout le campus partage souvent la même IP (Wi-Fi ISEP) -> limites larges ;
+        # les vraies protections sont par e-mail (quota de codes, 5 essais par code).
+        "vote_demande": _env("LIMITE_VOTE_DEMANDE", "400/hour"),
+        "vote_verification": _env("LIMITE_VOTE_VERIF", "120/minute"),
+        "vote": _env("LIMITE_VOTE", "600/hour"),
     },
     # Derrière le serveur de PythonAnywhere, l'IP du visiteur est dans X-Forwarded-For :
     # NUM_PROXIES=1 permet de lire la vraie IP au lieu de celle du proxy.
@@ -210,4 +215,7 @@ R2_VIDEO_TAILLE_MAX_MO = int(_env("R2_VIDEO_TAILLE_MAX_MO", "100"))
 # Clôture des inscriptions (heure de Dakar). Format ISO 8601.
 DATE_LIMITE_INSCRIPTION = _env("DATE_LIMITE_INSCRIPTION", "2026-11-14T23:59:59+00:00")
 # Clôture des candidatures aux élections (heure de Dakar = UTC). Format ISO 8601.
+# Vote en ligne (heure de Dakar = UTC) : du jeudi 26 novembre 8h au vendredi 27 novembre 18h.
+VOTE_DEBUT = _env("VOTE_DEBUT", "2026-11-26T08:00:00+00:00")
+VOTE_FIN = _env("VOTE_FIN", "2026-11-27T18:00:00+00:00")
 DATE_LIMITE_CANDIDATURES = _env("DATE_LIMITE_CANDIDATURES", "2026-11-23T23:59:59+00:00")

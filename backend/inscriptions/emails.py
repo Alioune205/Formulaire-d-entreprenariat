@@ -547,3 +547,25 @@ def collecter_tous_destinataires_plateforme():
         "deja_envoyes_count": deja_envoyes.count(),
     }
 
+
+
+def envoyer_code_vote(email, code, prenom):
+    from .models import CodeVote
+
+    minutes = int(CodeVote.DUREE_VALIDITE.total_seconds() // 60)
+    _envoyer(
+        email,
+        f"Votre code de vote : {code}",
+        f"Bonjour {prenom},\n\nVoici votre code pour voter aux élections du Club d'Entrepreneuriat : {code}\n\n"
+        f"Il est valable {minutes} minutes et ne peut servir qu'une fois. Ne le partagez avec personne.\n"
+        "Si vous n'êtes pas à l'origine de cette demande, prévenez la commission électorale.",
+        "emails/code_vote.html",
+        {
+            "apercu": f"Code valable {minutes} minutes. Ne le partagez avec personne.",
+            "surtitre": "Élections du club",
+            "titre": "Votre code de vote",
+            "code": code,
+            "minutes": minutes,
+            "prenom": prenom,
+        },
+    )

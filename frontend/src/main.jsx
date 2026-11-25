@@ -6,6 +6,7 @@ import Admin from './pages/Admin.jsx';
 import Suivi from './pages/Suivi.jsx';
 import Recuperation from './pages/Recuperation.jsx';
 import Elections from './pages/Elections.jsx';
+import Vote from './pages/Vote.jsx';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -15,6 +16,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <Route path="/" element={<Accueil />} />
         <Route path="/elections" element={<Elections />} />
         <Route path="/postes" element={<Elections />} />
+        <Route path="/vote" element={<Vote />} />
         <Route path="/suivi" element={<Suivi />} />
         <Route path="/recuperation" element={<Recuperation />} />
         <Route path="/admin" element={<Admin />} />

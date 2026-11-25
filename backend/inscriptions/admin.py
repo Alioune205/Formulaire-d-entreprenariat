@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import CandidaturePoste, EnvoiDiffusion, Inscription, Membre, ModeleEmail, ParametresPlateforme
+from .models import CandidaturePoste, CompteurVoix, Emargement, EnvoiDiffusion, Inscription, Membre, ModeleEmail, ParametresPlateforme
 
 
 class MembreInline(admin.TabularInline):
@@ -48,3 +48,35 @@ class EnvoiDiffusionAdmin(admin.ModelAdmin):
     list_filter = ("canal", "envoye_le")
     search_fields = ("email_brut", "email_canonique", "nom_destinataire")
 
+
+
+@admin.register(Emargement)
+class EmargementAdmin(admin.ModelAdmin):
+    """Liste d'émargement : qui a voté et quand. Ne contient jamais le choix de vote."""
+    list_display = ("nom_complet", "email_saisi", "recu", "vote_le")
+    search_fields = ("nom_complet", "email_saisi", "recu")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(CompteurVoix)
+class CompteurVoixAdmin(admin.ModelAdmin):
+    """Urne : lecture seule, pour éviter toute modification manuelle des voix."""
+    list_display = ("poste", "choix", "candidature", "voix")
+    list_filter = ("poste",)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

@@ -8,6 +8,7 @@ import { api, ErreurApi, telechargerCsv, tokenAdmin } from '../lib/api.js';
 import Entretiens from '../components/admin/Entretiens.jsx';
 import CandidaturesPostes from '../components/admin/CandidaturesPostes.jsx';
 import Recap from '../components/admin/Recap.jsx';
+import ResultatsVote from '../components/admin/ResultatsVote.jsx';
 import { ApercuEmail } from '../components/admin/EnvoiFelicitations.jsx';
 
 const GENRES = { F: 'Fille', H: 'Garçon' };
@@ -419,6 +420,7 @@ function TableauDeBord({ onDeconnexion }) {
               ['entretiens', 'Entretiens', ClipboardCheck],
               ['candidatures', 'Candidatures Postes', Vote],
               ['recap', 'Récapitulatif', BarChart3],
+              ['vote', 'Vote & résultats', CheckCircle2],
             ].map(([id, libelle, Icone]) => (
               <button
                 key={id}
@@ -436,7 +438,9 @@ function TableauDeBord({ onDeconnexion }) {
           </div>
         </div>
 
-        {onglet === 'recap' ? (
+        {onglet === 'vote' ? (
+          <div className="mt-6"><ResultatsVote onDeconnexion={onDeconnexion} /></div>
+        ) : onglet === 'recap' ? (
           <div className="mt-6"><Recap onDeconnexion={onDeconnexion} /></div>
         ) : onglet === 'entretiens' ? (
           <div className="mt-6"><Entretiens onDeconnexion={onDeconnexion} onMajStats={charger} /></div>

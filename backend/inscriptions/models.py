@@ -338,3 +338,115 @@ class EnvoiDiffusion(models.Model):
     def __str__(self):
         return f"[{self.canal}] {self.email_brut}"
 
+
+
+# --- Élections : vote en ligne ---------------------------------------------------------------
+#
+# Secret du vote : on ne conserve AUCUN bulletin individuel. L'émargement dit QUI a voté ;
+# les compteurs disent COMBIEN de voix chaque choix a reçu. Rien ne relie les deux tables.
+
+
+class CodeVote(models.Model):
+    """Code à 6 chiffres envoyé par e-mail à l'électeur pour ouvrir son bulletin."""
+
+    DUREE_VALIDITE = timedelta(minutes=10)
+    MAX_TENTATIVES = 5
+    MAX_CODES_PAR_HEURE = 5
+
+    email = models.EmailField("e-mail (normalisé)", db_index=True)
+    email_saisi = models.EmailField("e-mail saisi")
+    nom_complet = models.CharField("nom saisi", max_length=170)
+    membre = models.ForeignKey(Membre, null=True, blank=True, on_delete=models.CASCADE, related_name="codes_vote")
+    candidature = models.ForeignKey(
+        CandidaturePoste, null=True, blank=True, on_delete=models.CASCADE, related_name="codes_vote"
+    )
+    code_hache = models.CharField(max_length=128)
+    cree_le = models.DateTimeField(auto_now_add=True)
+    expire_le = models.DateTimeField()
+    tentatives = models.PositiveSmallIntegerField(default=0)
+    utilise = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["-cree_le"]
+        verbose_name = "code de vote"
+        verbose_name_plural = "codes de vote"
+
+    @classmethod
+    def quota_atteint(cls, email):
+        depuis = timezone.now() - timedelta(hours=1)
+        return cls.objects.filter(email=email, cree_le__gte=depuis).count() >= cls.MAX_CODES_PAR_HEURE
+
+    @classmethod
+    def creer(cls, email, email_saisi, nom_complet, membre=None, candidature=None):
+        cls.objects.filter(email=email, utilise=False).update(utilise=True)
+        code = f"{secrets.randbelow(1_000_000):06d}"
+        obj = cls.objects.create(
+            email=email, email_saisi=email_saisi, nom_complet=nom_complet,
+            membre=membre, candidature=candidature,
+            code_hache=make_password(code), expire_le=timezone.now() + cls.DUREE_VALIDITE,
+        )
+        return obj, code
+
+    @property
+    def valide(self):
+        return not self.utilise and self.tentatives < self.MAX_TENTATIVES and timezone.now() < self.expire_le
+
+    def verifier(self, code):
+        if not self.valide:
+            return False
+        if check_password(code, self.code_hache):
+            self.utilise = True
+            self.save(update_fields=["utilise"])
+            return True
+        self.tentatives += 1
+        self.save(update_fields=["tentatives"])
+        return False
+
+
+class Emargement(models.Model):
+    """Liste d'émargement : une ligne par électeur ayant voté. Ne contient AUCUN choix de vote."""
+
+    membre = models.OneToOneField(
+        Membre, null=True, blank=True, on_delete=models.SET_NULL, related_name="emargement"
+    )
+    candidature = models.OneToOneField(
+        CandidaturePoste, null=True, blank=True, on_delete=models.SET_NULL, related_name="emargement"
+    )
+    email = models.EmailField("e-mail (normalisé)", unique=True)
+    email_saisi = models.EmailField("e-mail saisi")
+    nom_complet = models.CharField("électeur", max_length=170)
+    recu = models.CharField("numéro de reçu", max_length=20, unique=True)
+    vote_le = models.DateTimeField("a voté le", auto_now_add=True)
+
+    class Meta:
+        ordering = ["-vote_le"]
+        verbose_name = "émargement"
+        verbose_name_plural = "émargements"
+
+    def __str__(self):
+        return f"{self.nom_complet} — {self.vote_le:%d/%m %H:%M}"
+
+
+class CompteurVoix(models.Model):
+    """Urne : nombre de voix par poste et par choix (candidat, blanc, pour, contre)."""
+
+    class Choix(models.TextChoices):
+        CANDIDAT = "CANDIDAT", "Candidat"
+        BLANC = "BLANC", "Vote blanc"
+        POUR = "POUR", "Pour"
+        CONTRE = "CONTRE", "Contre"
+
+    cle = models.CharField(max_length=80, unique=True)
+    poste = models.CharField(max_length=40, choices=CandidaturePoste.Poste.choices, db_index=True)
+    choix = models.CharField(max_length=10, choices=Choix.choices)
+    candidature = models.ForeignKey(
+        CandidaturePoste, null=True, blank=True, on_delete=models.PROTECT, related_name="compteurs"
+    )
+    voix = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        verbose_name = "compteur de voix"
+        verbose_name_plural = "urne (compteurs de voix)"
+
+    def __str__(self):
+        return f"{self.cle} : {self.voix}"

@@ -1,7 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from . import views
+from . import views, vote
 
 router = DefaultRouter()
 router.register("admin/inscriptions", views.InscriptionAdminViewSet, basename="admin-inscriptions")
@@ -24,5 +24,11 @@ urlpatterns = [
     path("admin/diffusion-whatsapp/apercu/", views.apercu_diffusion_whatsapp, name="admin-diffusion-whatsapp-apercu"),
     path("admin/diffusion-elections/", views.diffusion_elections, name="admin-diffusion-elections"),
     path("admin/diffusion-elections/apercu/", views.apercu_diffusion_elections, name="admin-diffusion-elections-apercu"),
+    path("vote/bulletin/", vote.vue_bulletin, name="vote-bulletin"),
+    path("vote/demande/", vote.demande_code, name="vote-demande"),
+    path("vote/verification/", vote.verification_code, name="vote-verification"),
+    path("vote/voter/", vote.voter, name="vote-voter"),
+    path("admin/vote/", vote.admin_vote, name="admin-vote"),
+    path("admin/vote/emargement/", vote.admin_emargement, name="admin-vote-emargement"),
     path("", include(router.urls)),
 ]

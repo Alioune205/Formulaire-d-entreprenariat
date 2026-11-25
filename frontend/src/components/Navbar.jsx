@@ -34,9 +34,9 @@ export default function Navbar() {
           >
             <FileSearch className="h-4 w-4" /> <span className="hidden sm:inline">Suivi dossier</span><span className="sm:hidden">Suivi</span>
           </NavLink>
-          <a href="/#inscription" className="rounded-xl bg-caramel-500 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-caramel-600 sm:text-sm">
-            S'inscrire
-          </a>
+          <Link to="/vote" className="rounded-xl bg-caramel-500 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-caramel-600 sm:text-sm">
+            Voter
+          </Link>
         </nav>
       </div>
     </header>
