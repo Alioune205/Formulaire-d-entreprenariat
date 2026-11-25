@@ -298,6 +298,13 @@ class CandidaturePosteAdminSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "id", "poste_libelle", "statut_libelle", "video_r2_cle", "video_url", "cree_le", "modifie_le",
         ]
+        # L'admin peut ajouter un candidat sans photo (ex. dossier reçu par WhatsApp) : initiales affichées.
+        extra_kwargs = {"photo": {"required": False}}
+
+    def validate_photo(self, value):
+        if value and value.size > 6 * 1024 * 1024:
+            raise serializers.ValidationError("La photo ne doit pas dépasser 6 Mo.")
+        return value
 
     def get_video_url(self, obj):
         if obj.video_r2_cle and stockage_r2.configure():

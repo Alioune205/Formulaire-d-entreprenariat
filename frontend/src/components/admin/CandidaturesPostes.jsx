@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   AlertCircle, AlertTriangle, CheckCircle2, ChevronRight, Download, ExternalLink, Eye,
-  Film, Filter, Loader2, RefreshCw, Search, Trash2, Upload, User, Video, XCircle, X,
+  Film, Filter, Loader2, RefreshCw, Search, Trash2, Upload, User, UserPlus, Video, XCircle, X,
 } from 'lucide-react';
+import AjoutCandidatAdmin from './AjoutCandidatAdmin.jsx';
 import { api, envoyerVersR2, telechargerCsv, urlMedia } from '../../lib/api.js';
 import { POSTES } from '../../lib/postes.js';
 
@@ -134,6 +135,7 @@ export default function CandidaturesPostes({ onDeconnexion }) {
 
   const [candidatSelectionne, setCandidatSelectionne] = useState(null);
   const [actionEnCours, setActionEnCours] = useState(false);
+  const [ajoutOuvert, setAjoutOuvert] = useState(false);
 
   const doublonsIds = useMemo(() => {
     const parTel = new Map();
@@ -361,6 +363,14 @@ export default function CandidaturesPostes({ onDeconnexion }) {
 
           <button
             type="button"
+            onClick={() => setAjoutOuvert(true)}
+            className="btn-primaire whitespace-nowrap"
+          >
+            <UserPlus className="h-4 w-4" /> Ajouter un candidat
+          </button>
+
+          <button
+            type="button"
             onClick={exporterCsv}
             className="btn-primaire whitespace-nowrap"
           >
@@ -527,6 +537,19 @@ export default function CandidaturesPostes({ onDeconnexion }) {
           </div>
         )}
       </div>
+
+      {ajoutOuvert && (
+        <AjoutCandidatAdmin
+          onFermer={() => setAjoutOuvert(false)}
+          onDeconnexion={onDeconnexion}
+          onCree={async (cree) => {
+            setAjoutOuvert(false);
+            setCandidatures((liste) => [cree, ...liste]);
+            setCandidatSelectionne(cree); // ouvre la fiche : on peut y ajouter la vidéo tout de suite
+            await rafraichirStats();
+          }}
+        />
+      )}
 
       {/* Modal Fiche Détail Candidat */}
       {candidatSelectionne && (
