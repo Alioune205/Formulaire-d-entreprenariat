@@ -19,7 +19,7 @@ from django.conf import settings
 from django.core import signing
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import validate_email
-from django.db import IntegrityError, transaction
+from django.db import DatabaseError, IntegrityError, transaction
 from django.db.models import F
 from django.utils import timezone
 from rest_framework import permissions, status
@@ -47,7 +47,10 @@ ALPHABET_RECU = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
 
 def horaires_vote():
     """(début, fin) : horaires réglés dans le back-office, sinon VOTE_DEBUT / VOTE_FIN des réglages."""
-    h = HorairesVote.obtenir()
+    try:
+        h = HorairesVote.obtenir()
+    except DatabaseError:  # migration pas encore appliquée : on garde les horaires par défaut
+        h = None
     debut = h.debut if h and h.debut else datetime.fromisoformat(settings.VOTE_DEBUT)
     fin = h.fin if h and h.fin else datetime.fromisoformat(settings.VOTE_FIN)
     return debut, fin
