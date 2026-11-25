@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowRight, Award, FileSearch, Megaphone, Users, Vote } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { CompteAReboursElections } from './CompteARebours.jsx';
+import { CompteAReboursElections, CompteAReboursVote } from './CompteARebours.jsx';
 
 const DIAPOS = [
   { src: '/hero-elections.jpeg', alt: 'Élections de gouvernance du Club d’Entrepreneuriat CIAT', position: 'object-[70%_center]', legende: 'Élections & Gouvernance' },
@@ -18,7 +18,8 @@ const PILIERS = [
 ];
 
 export default function Hero({ temps }) {
-  const { elections } = temps;
+  const { elections, vote } = temps;
+  const phaseVote = !elections.ouvert;
   const [diapos, setDiapos] = useState(DIAPOS);
   const [actif, setActif] = useState(0);
 
@@ -58,35 +59,57 @@ export default function Hero({ temps }) {
         <div className="max-w-2xl">
           <span className="inline-flex items-center gap-2 rounded-full border border-caramel-300/40 bg-caramel-500/15 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider text-caramel-200">
             <span className="h-2 w-2 animate-pulse rounded-full bg-caramel-400" />
-            {elections.ouvert ? 'Élections 2026-2027 • Candidatures prolongées' : 'Élections 2026-2027 • Candidatures closes'}
+            {elections.ouvert
+              ? 'Élections 2026-2027 • Candidatures prolongées'
+              : vote.etat === 'ouvert' ? 'Élections 2026-2027 • Vote en cours'
+                : vote.etat === 'avant' ? 'Élections 2026-2027 • Vote en ligne les 26 et 27 novembre'
+                  : 'Élections 2026-2027 • Vote clos'}
           </span>
 
           <h1 className="mt-6 text-4xl font-extrabold leading-[1.1] tracking-tight text-white sm:text-5xl lg:text-6xl">
             Élections du Club d'Entrepreneuriat
-            <span className="block text-caramel-300">13 postes à pourvoir. Pourquoi pas vous ?</span>
+            <span className="block text-caramel-300">
+              {phaseVote ? 'Découvrez les candidats, puis votez !' : '13 postes à pourvoir. Pourquoi pas vous ?'}
+            </span>
           </h1>
 
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-brun-100">
-            Présidence, Bureau Exécutif ou chef d'une des 5 Cellules Thématiques : prenez la tête du club du CIAT.
-            Dépôt en quelques minutes avec une photo, vos motivations et une courte vidéo de campagne.
+            {phaseVote
+              ? 'Présidence, Bureau Exécutif et chefs des Cellules Thématiques : regardez les vidéos de campagne, lisez les engagements de chaque candidat, puis votez en ligne en quelques minutes avec votre e-mail.'
+              : 'Présidence, Bureau Exécutif ou chef d’une des 5 Cellules Thématiques : prenez la tête du club du CIAT. Dépôt en quelques minutes avec une photo, vos motivations et une courte vidéo de campagne.'}
           </p>
 
           <div className="mt-8">
-            <CompteAReboursElections elections={elections} variante="sombre" />
+            {phaseVote
+              ? <CompteAReboursVote vote={vote} variante="sombre" />
+              : <CompteAReboursElections elections={elections} variante="sombre" />}
           </div>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <Link to="/elections" className="inline-flex items-center justify-center gap-2 rounded-xl bg-caramel-500 px-6 py-3.5 font-bold text-white shadow-xl shadow-black/20 transition hover:-translate-y-0.5 hover:bg-caramel-400">
-              <Vote className="h-5 w-5" /> {elections.ouvert ? 'Je me porte candidat(e)' : 'Voir les élections'} <ArrowRight className="h-4 w-4" />
-            </Link>
+            {phaseVote ? (
+              <>
+                {vote.etat !== 'clos' && (
+                  <Link to="/vote" className="inline-flex items-center justify-center gap-2 rounded-xl bg-caramel-500 px-6 py-3.5 font-bold text-white shadow-xl shadow-black/20 transition hover:-translate-y-0.5 hover:bg-caramel-400">
+                    <Vote className="h-5 w-5" /> {vote.etat === 'ouvert' ? 'Je vote maintenant' : 'Page de vote'} <ArrowRight className="h-4 w-4" />
+                  </Link>
+                )}
+                <a href="#candidats" className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 py-3.5 font-bold text-brun-900 shadow-xl shadow-black/20 transition hover:-translate-y-0.5 hover:bg-caramel-50">
+                  <Megaphone className="h-5 w-5 text-caramel-600" /> Découvrir les candidats
+                </a>
+              </>
+            ) : (
+              <Link to="/elections" className="inline-flex items-center justify-center gap-2 rounded-xl bg-caramel-500 px-6 py-3.5 font-bold text-white shadow-xl shadow-black/20 transition hover:-translate-y-0.5 hover:bg-caramel-400">
+                <Vote className="h-5 w-5" /> Je me porte candidat(e) <ArrowRight className="h-4 w-4" />
+              </Link>
+            )}
             {temps.ouvert ? (
               <a href="#inscription" className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 py-3.5 font-bold text-brun-900 shadow-xl shadow-black/20 transition hover:-translate-y-0.5 hover:bg-caramel-50">
                 Inscrire mon projet <ArrowRight className="h-4 w-4 text-caramel-600" />
               </a>
             ) : null}
-            <Link to="/suivi" className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/30 px-6 py-3.5 font-semibold text-white transition hover:bg-white/10">
+            {!phaseVote && <Link to="/suivi" className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/30 px-6 py-3.5 font-semibold text-white transition hover:bg-white/10">
               <FileSearch className="h-5 w-5" /> Suivre mon dossier
-            </Link>
+            </Link>}
           </div>
 
           <ul className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-4">

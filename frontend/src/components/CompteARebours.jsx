@@ -26,6 +26,28 @@ function Blocs({ t, sombre }) {
   );
 }
 
+/** Compte à rebours du vote : jusqu'à l'ouverture, puis jusqu'à la clôture (`temps.vote`). */
+export function CompteAReboursVote({ vote, variante = 'sombre' }) {
+  const sombre = variante === 'sombre';
+  if (vote.etat === 'clos') {
+    return (
+      <div className={`inline-flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-bold ${sombre ? 'bg-white/10 text-white' : 'bg-brun-50 text-brun-800'}`}>
+        <CheckCircle2 className="h-4 w-4" /> Le vote est clos. Merci pour votre participation, résultats très bientôt !
+      </div>
+    );
+  }
+  const avant = vote.etat === 'avant';
+  return (
+    <div>
+      <p className={`mb-3 flex items-center gap-2 text-sm font-bold ${sombre ? 'text-caramel-200' : 'text-caramel-700'}`}>
+        <Clock className="h-4 w-4" />
+        {avant ? `Ouverture du vote le ${formatDateLimite(vote.debut)}` : `Vote ouvert ! Clôture le ${formatDateLimite(vote.fin)}`}
+      </p>
+      <Blocs t={vote} sombre={sombre} />
+    </div>
+  );
+}
+
 /** Compte à rebours jusqu'à la clôture des candidatures aux élections (`temps.elections`). */
 export function CompteAReboursElections({ elections, variante = 'sombre' }) {
   const sombre = variante === 'sombre';

@@ -4,9 +4,10 @@ import Navbar from '../components/Navbar.jsx';
 import Hero from '../components/Hero.jsx';
 import PresentationAujourdhui from '../components/PresentationAujourdhui.jsx';
 import MiseEnAvantElections from '../components/MiseEnAvantElections.jsx';
+import VitrineCandidats from '../components/VitrineCandidats.jsx';
 import FormulaireInscription from '../components/FormulaireInscription.jsx';
 import Footer from '../components/Footer.jsx';
-import useDateLimite, { formatJourLimite } from '../lib/useDateLimite.js';
+import useDateLimite, { formatDateLimite, formatJourLimite } from '../lib/useDateLimite.js';
 
 export default function Accueil() {
   const temps = useDateLimite();
@@ -25,17 +26,21 @@ export default function Accueil() {
                   <strong className="text-white">Candidatures prolongées jusqu'au {formatJourLimite(temps.elections.dateLimite)}</strong>
                   {' '}— 13 postes à pourvoir au Bureau et dans les Cellules.
                 </>
+              ) : temps.vote.etat === 'avant' ? (
+                <><strong className="text-white">Vote en ligne à partir du {formatDateLimite(temps.vote.debut)}</strong>, jusqu'au {formatDateLimite(temps.vote.fin)}.</>
+              ) : temps.vote.etat === 'ouvert' ? (
+                <><strong className="text-white">Le vote est ouvert !</strong> Clôture le {formatDateLimite(temps.vote.fin)}.</>
               ) : (
-                <strong className="text-white">Le dépôt des candidatures aux élections est clos.</strong>
+                <strong className="text-white">Le vote est clos. Merci pour votre participation !</strong>
               )}
             </span>
           </p>
           <div className="flex items-center gap-4">
             <Link
-              to="/elections"
+              to={temps.elections.ouvert ? '/elections' : '/vote'}
               className="inline-flex items-center gap-1 font-bold text-caramel-300 transition hover:text-caramel-200"
             >
-              {temps.elections.ouvert ? 'Je candidate' : 'Élections & Votes'} <ArrowRight className="h-3.5 w-3.5" />
+              {temps.elections.ouvert ? 'Je candidate' : temps.vote.etat === 'clos' ? 'Élections' : 'Je vote'} <ArrowRight className="h-3.5 w-3.5" />
             </Link>
             {temps.ouvert && (
               <a
@@ -50,10 +55,10 @@ export default function Accueil() {
       </div>
       <main>
         <Hero temps={temps} />
-        <MiseEnAvantElections temps={temps} />
-        {/* Annonce de réouverture des inscriptions : seulement tant qu'elles sont ouvertes */}
+        {temps.elections.ouvert ? <MiseEnAvantElections temps={temps} /> : <VitrineCandidats vote={temps.vote} />}
+        {/* Inscriptions des projets : affichées seulement tant qu'elles sont ouvertes */}
         {temps.ouvert && <PresentationAujourdhui temps={temps} />}
-        <FormulaireInscription temps={temps} />
+        {temps.ouvert && <FormulaireInscription temps={temps} />}
       </main>
       <Footer />
     </>

@@ -4,6 +4,8 @@ import { api } from './api.js';
 // Valeurs de secours si l'API est injoignable.
 const DATE_LIMITE_SECOURS = '2026-11-14T23:59:59+00:00';
 const DATE_CANDIDATURES_SECOURS = '2026-11-23T23:59:59+00:00';
+const VOTE_DEBUT_SECOURS = '2026-11-26T08:00:00+00:00';
+const VOTE_FIN_SECOURS = '2026-11-27T18:00:00+00:00';
 
 const decouper = (restant) => ({
   aCompteARebours: restant > 0,
@@ -20,6 +22,8 @@ const decouper = (restant) => ({
 export default function useDateLimite() {
   const [dateLimite, setDateLimite] = useState(() => new Date(DATE_LIMITE_SECOURS));
   const [dateCandidatures, setDateCandidatures] = useState(() => new Date(DATE_CANDIDATURES_SECOURS));
+  const [voteDebut, setVoteDebut] = useState(() => new Date(VOTE_DEBUT_SECOURS));
+  const [voteFin, setVoteFin] = useState(() => new Date(VOTE_FIN_SECOURS));
   const [ouvert, setOuvert] = useState(true);
   const [decalage, setDecalage] = useState(0);
   const [maintenant, setMaintenant] = useState(() => Date.now());
@@ -34,6 +38,8 @@ export default function useDateLimite() {
         }
         if (d.date_limite) setDateLimite(new Date(d.date_limite));
         if (d.date_limite_candidatures) setDateCandidatures(new Date(d.date_limite_candidatures));
+        if (d.vote_debut) setVoteDebut(new Date(d.vote_debut));
+        if (d.vote_fin) setVoteFin(new Date(d.vote_fin));
         if (d.maintenant) setDecalage(new Date(d.maintenant).getTime() - Date.now());
       })
       .catch(() => {});
@@ -43,7 +49,15 @@ export default function useDateLimite() {
 
   const horloge = maintenant + decalage;
   const restantElections = Math.max(0, dateCandidatures.getTime() - horloge);
+  const etatVote = horloge < voteDebut.getTime() ? 'avant' : horloge <= voteFin.getTime() ? 'ouvert' : 'clos';
+  const echeanceVote = etatVote === 'avant' ? voteDebut : voteFin;
   return {
+    vote: {
+      debut: voteDebut,
+      fin: voteFin,
+      etat: etatVote,
+      ...decouper(Math.max(0, echeanceVote.getTime() - horloge)),
+    },
     dateLimite,
     ouvert,
     ...decouper(Math.max(0, dateLimite.getTime() - horloge)),
