@@ -255,9 +255,7 @@ export default function Vote() {
           <p><strong className="text-brun-900">Code par e-mail</strong> pour vérifier votre identité</p>
           <p><strong className="text-brun-900">Définitif</strong> après confirmation</p>
         </div>
-        <p className="mb-6 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm font-semibold text-amber-900">
-
-        </p>
+        
         {erreur && <Alerte>{erreur}</Alerte>}
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
@@ -424,7 +422,6 @@ export default function Vote() {
             <IconeVote className="mx-auto h-10 w-10 text-caramel-500" />
             <h3 className="mt-3 text-xl font-extrabold text-brun-900">Confirmer définitivement ?</h3>
             <p className="mt-2 text-sm text-brun-600">Votre vote sera déposé dans l’urne et ne pourra plus être modifié.</p>
-            <p className="mt-3 rounded-xl bg-amber-50 p-2.5 text-xs font-semibold text-amber-900">merci</p>
             <div className="mt-6 flex gap-3">
               <button type="button" disabled={chargement} onClick={() => setConfirmation(false)} className="btn-secondaire flex-1">Annuler</button>
               <button type="button" disabled={chargement} onClick={envoyerVote} className="btn-primaire flex-1">
