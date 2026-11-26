@@ -1,5 +1,5 @@
-import { Link, NavLink } from 'react-router-dom';
-import { FileSearch, Users } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Users, Vote } from 'lucide-react';
 
 export default function Navbar() {
   return (
@@ -16,16 +16,11 @@ export default function Navbar() {
             <Users className="h-4 w-4 shrink-0 text-caramel-300" />
             <span>Candidats</span>
           </Link>
-          <NavLink
-            to="/suivi"
-            className={({ isActive }) =>
-              `inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 hover:bg-brun-50 ${isActive ? 'text-caramel-600' : 'text-brun-700'}`
-            }
+          <Link
+            to="/vote"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-caramel-500 px-4 py-2 text-sm font-extrabold text-white shadow-md shadow-caramel-500/30 ring-2 ring-caramel-300 transition hover:bg-caramel-600 sm:px-5"
           >
-            <FileSearch className="h-4 w-4" /> <span className="hidden sm:inline">Suivi dossier</span><span className="sm:hidden">Suivi</span>
-          </NavLink>
-          <Link to="/vote" className="rounded-xl bg-caramel-500 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-caramel-600 sm:text-sm">
-            Voter
+            <Vote className="h-4 w-4" /> Voter
           </Link>
         </nav>
       </div>
