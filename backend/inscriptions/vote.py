@@ -7,7 +7,8 @@ Règles :
 - une seule participation par membre, par candidat et par adresse e-mail ;
 - poste à candidat unique : Pour / Contre / Blanc (élu si Pour > Contre) ;
 - poste à plusieurs candidats : un candidat ou Blanc (égalité : la commission tranche) ;
-- secret : l'émargement (qui a voté) et les compteurs (combien de voix) ne sont jamais reliés ;
+- bulletin nominatif : les choix sont enregistrés avec le nom du votant (annoncé sur la page de vote)
+  et consultables par l'administration ; les compteurs donnent les résultats ;
 - résultats visibles uniquement après la clôture.
 """
 import re
@@ -30,7 +31,7 @@ from rest_framework.throttling import SimpleRateThrottle
 from . import stockage_r2
 from .emails import apres_reponse, envoyer_code_vote
 from .models import (
-    CandidaturePoste, CodeVote, CompteurVoix, Emargement, HorairesVote, Inscription, Membre,
+    BulletinNominatif, CandidaturePoste, CodeVote, CompteurVoix, Emargement, HorairesVote, Inscription, Membre,
     ModificationHorairesVote,
 )
 from .postes import POSTES_CATALOGUE
@@ -342,6 +343,7 @@ def voter(request):
     if not isinstance(choix_recus, dict):
         return Response({"detail": "Bulletin invalide."}, status=status.HTTP_400_BAD_REQUEST)
     a_compter = []
+    lisible = []
     for poste, cands in postes_du_bulletin():
         code_poste = poste["code"]
         valeur = str(choix_recus.get(code_poste, "BLANC")).strip().upper()
@@ -354,6 +356,11 @@ def voter(request):
         else:
             return Response({"detail": f"Choix invalide pour le poste « {poste['titre']} ». Rechargez la page."},
                             status=status.HTTP_400_BAD_REQUEST)
+        _, choix_compte, cand = a_compter[-1]
+        nom_cand = f"{cand.prenom} {cand.nom}" if cand else ""
+        libelle = {"BLANC": "Vote blanc", "POUR": f"Pour {nom_cand}", "CONTRE": f"Contre {nom_cand}"}.get(
+            choix_compte, nom_cand)
+        lisible.append({"poste": code_poste, "titre": poste["titre"], "choix": libelle})
 
     try:
         with transaction.atomic():
@@ -365,6 +372,11 @@ def voter(request):
             )
             for code_poste, choix, candidature in a_compter:
                 _incrementer(code_poste, choix, candidature)
+            try:
+                with transaction.atomic():  # point de sauvegarde : le vote passe même si la table manque
+                    BulletinNominatif.objects.create(emargement=emargement, choix=lisible)
+            except DatabaseError:
+                pass
     except IntegrityError:
         return Response({"detail": "Vous avez déjà voté. Une seule participation est autorisée par électeur.",
                          "code": "deja_vote"}, status=status.HTTP_409_CONFLICT)
@@ -429,10 +441,14 @@ def admin_vote(request):
 @api_view(["GET"])
 @permission_classes([permissions.IsAdminUser])
 def admin_emargement(request):
-    """GET /api/admin/vote/emargement/ — qui a voté et quand (jamais pour qui)."""
+    """GET /api/admin/vote/emargement/ — qui a voté, quand, et ses choix (bulletin nominatif s'il existe)."""
+    try:
+        bulletins = {b.emargement_id: b.choix for b in BulletinNominatif.objects.all()}
+    except DatabaseError:
+        bulletins = {}
     return Response([
         {"nom_complet": e.nom_complet, "email": e.email_saisi, "recu": e.recu, "vote_le": e.vote_le,
-         "type": "Candidat" if e.candidature_id else "Membre"}
+         "type": "Candidat" if e.candidature_id else "Membre", "choix": bulletins.get(e.id)}
         for e in Emargement.objects.all()
     ])
 

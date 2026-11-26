@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 from .models import (
-    CandidaturePoste, CompteurVoix, Emargement, EnvoiDiffusion, HorairesVote, Inscription, Membre, ModeleEmail,
+    BulletinNominatif, CandidaturePoste, CompteurVoix, Emargement, EnvoiDiffusion, HorairesVote, Inscription, Membre, ModeleEmail,
     ModificationHorairesVote, ParametresPlateforme,
 )
 
@@ -95,6 +95,22 @@ class HorairesVoteAdmin(admin.ModelAdmin):
 class ModificationHorairesVoteAdmin(admin.ModelAdmin):
     """Journal des changements d'horaires : lecture seule."""
     list_display = ("le", "par", "debut_apres", "fin_apres", "motif")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(BulletinNominatif)
+class BulletinNominatifAdmin(admin.ModelAdmin):
+    """Choix des votants (lecture seule)."""
+    list_display = ("emargement", "cree_le")
+    readonly_fields = ("emargement", "choix", "cree_le")
 
     def has_add_permission(self, request):
         return False

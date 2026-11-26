@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { AlertCircle, AlertTriangle, Award, Loader2, Lock, Printer, RefreshCw, Search } from 'lucide-react';
+import { AlertCircle, AlertTriangle, Award, Download, Loader2, Lock, Printer, RefreshCw, Search } from 'lucide-react';
 import { api, ErreurApi } from '../../lib/api.js';
 import HorairesVote from './HorairesVote.jsx';
 import ElecteursAjoutes from './ElecteursAjoutes.jsx';
@@ -15,6 +15,29 @@ function formatDate(iso) {
   return new Date(iso).toLocaleString('fr-FR', {
     weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Dakar',
   });
+}
+
+const texteChoix = (e) => (e.choix ? e.choix.map((c) => `${c.titre} : ${c.choix}`).join(' · ') : '');
+
+// Export Excel (CSV ; séparateur « ; », BOM pour les accents).
+function exporterEmargement(liste) {
+  const cellule = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const postes = [...new Set(liste.flatMap((e) => (e.choix ?? []).map((c) => c.titre)))];
+  const lignes = [
+    ['Électeur', 'Type', 'E-mail', 'Reçu', 'A voté le', ...postes].map(cellule).join(';'),
+    ...liste.map((e) => {
+      const parPoste = Object.fromEntries((e.choix ?? []).map((c) => [c.titre, c.choix]));
+      return [e.nom_complet, e.type, e.email, e.recu,
+        new Date(e.vote_le).toLocaleString('fr-FR', { timeZone: 'Africa/Dakar' }),
+        ...postes.map((p) => (e.choix ? parPoste[p] ?? '' : 'Non enregistré'))].map(cellule).join(';');
+    }),
+  ];
+  const blob = new Blob([`\ufeff${lignes.join('\r\n')}`], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'votants-et-choix.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 const pct = (n, total) => (total ? `${Math.round((1000 * n) / total) / 10} %` : '0 %');
@@ -117,7 +140,7 @@ export default function ResultatsVote({ onDeconnexion }) {
   }
 
   const [libEtat, classeEtat] = ETATS[donnees.vote_etat];
-  const filtres = emargement.filter((e) => `${e.nom_complet} ${e.email} ${e.recu}`.toLowerCase().includes(recherche.toLowerCase()));
+  const filtres = emargement.filter((e) => `${e.nom_complet} ${e.email} ${e.recu} ${texteChoix(e)}`.toLowerCase().includes(recherche.toLowerCase()));
 
   return (
     <div className="space-y-6">
@@ -178,17 +201,25 @@ export default function ResultatsVote({ onDeconnexion }) {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h3 className="text-lg font-extrabold text-brun-800">Liste d’émargement</h3>
-            <p className="mt-1 text-sm text-brun-600">Qui a voté et quand. Les choix de vote ne sont jamais enregistrés avec ces noms.</p>
+            <p className="mt-1 text-sm text-brun-600">
+              Qui a voté, quand, et pour qui. Les votes faits avant l’activation des bulletins nominatifs n’ont pas de choix
+              enregistrés (« Non enregistré »). Recherche possible par nom de candidat.
+            </p>
           </div>
+          <div className="flex flex-wrap gap-2">
+          <button type="button" className="btn-secondaire" onClick={() => exporterEmargement(emargement)} disabled={!emargement.length}>
+            <Download className="h-4 w-4" /> Export Excel
+          </button>
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brun-400" />
-            <input className="champ pl-9" placeholder="Nom, e-mail, reçu…" value={recherche} onChange={(e) => setRecherche(e.target.value)} />
+            <input className="champ pl-9" placeholder="Nom, e-mail, reçu, candidat…" value={recherche} onChange={(e) => setRecherche(e.target.value)} />
+          </div>
           </div>
         </div>
         <div className="mt-4 max-h-[480px] overflow-auto rounded-xl border border-brun-100">
           <table className="w-full text-left text-sm">
             <thead className="sticky top-0 bg-brun-50 text-xs uppercase text-brun-500">
-              <tr><th className="px-3 py-2">Électeur</th><th className="px-3 py-2">E-mail</th><th className="px-3 py-2">Reçu</th><th className="px-3 py-2">A voté le</th></tr>
+              <tr><th className="px-3 py-2">Électeur</th><th className="px-3 py-2">E-mail</th><th className="px-3 py-2">Reçu</th><th className="px-3 py-2">A voté le</th><th className="px-3 py-2">Choix</th></tr>
             </thead>
             <tbody className="divide-y divide-brun-50">
               {filtres.map((e) => (
@@ -197,10 +228,15 @@ export default function ResultatsVote({ onDeconnexion }) {
                   <td className="px-3 py-2 text-brun-600">{e.email}</td>
                   <td className="px-3 py-2 font-mono text-brun-700">{e.recu}</td>
                   <td className="px-3 py-2 text-brun-600">{new Date(e.vote_le).toLocaleString('fr-FR', { timeZone: 'Africa/Dakar' })}</td>
+                  <td className="px-3 py-2 text-xs text-brun-700">
+                    {e.choix
+                      ? e.choix.map((c) => <div key={c.poste}><span className="text-brun-400">{c.titre} :</span> <strong>{c.choix}</strong></div>)
+                      : <span className="italic text-brun-400">Non enregistré</span>}
+                  </td>
                 </tr>
               ))}
               {!filtres.length && (
-                <tr><td colSpan={4} className="px-3 py-8 text-center text-brun-400">Aucun votant pour l’instant.</td></tr>
+                <tr><td colSpan={5} className="px-3 py-8 text-center text-brun-400">Aucun votant pour l’instant.</td></tr>
               )}
             </tbody>
           </table>

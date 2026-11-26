@@ -51,7 +51,7 @@ class VoteTests(TestCase):
         self.assertTrue(r.data["postes"][1]["candidat_unique"])
         self.assertEqual(r.data["vote_etat"], "ouvert")
 
-    def test_parcours_complet_et_secret(self):
+    def test_parcours_complet(self):
         jeton = self.session("awa@ex.com", "  awa ", "NDIAYE")
         r = self.client.post("/api/vote/voter/", {"jeton": jeton, "choix": {
             "PRESIDENT": str(self.p1.id), "TRESORIER": "POUR"}}, format="json")
@@ -132,7 +132,8 @@ class VoteTests(TestCase):
         self.assertFalse(tres["candidats"][0]["elu"])  # 1 pour, 1 contre
         r = self.client.get("/api/admin/vote/emargement/")
         self.assertEqual(len(r.data), 2)
-        self.assertNotIn("choix", r.data[0])
+        choix = {c["titre"]: c["choix"] for c in r.data[0]["choix"]}
+        self.assertIn("Fatou Sow", choix.values())  # bulletin nominatif lisible par l'admin
 
 
 @override_settings(THROTTLE_DISABLED=True)

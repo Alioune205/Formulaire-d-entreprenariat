@@ -317,6 +317,23 @@ class ParametresPlateforme(models.Model):
         return obj
 
 
+class BulletinNominatif(models.Model):
+    """Choix d'un votant, enregistrés avec son émargement.
+
+    Les électeurs en sont informés sur la page de vote (« Vos choix sont enregistrés avec votre nom et
+    consultables par l'administration de l'ISEP ») avant de confirmer. Les votes antérieurs à cette
+    fonctionnalité n'ont pas de bulletin nominatif.
+    """
+
+    emargement = models.OneToOneField("Emargement", on_delete=models.CASCADE, related_name="bulletin")
+    choix = models.JSONField("choix", default=list)  # [{"poste": code, "titre": ..., "choix": libellé lisible}]
+    cree_le = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "bulletin nominatif"
+        verbose_name_plural = "bulletins nominatifs"
+
+
 class HorairesVote(models.Model):
     """Horaires du scrutin modifiés depuis le back-office (vides = valeurs VOTE_DEBUT/VOTE_FIN des réglages)."""
 
