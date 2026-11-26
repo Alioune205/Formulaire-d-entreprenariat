@@ -254,7 +254,7 @@ export default function Vote() {
       <form onSubmit={demanderCode} noValidate>
         <div className="mb-6 grid gap-2 rounded-2xl bg-brun-50 p-4 text-sm text-brun-700 sm:grid-cols-3">
           <p><strong className="text-brun-900">1 bulletin</strong> par électeur</p>
-          <p><strong className="text-brun-900">Vote secret</strong> : personne ne voit vos choix</p>
+          <p><strong className="text-brun-900">Code par e-mail</strong> pour vérifier votre identité</p>
           <p><strong className="text-brun-900">Définitif</strong> après confirmation</p>
         </div>
         {erreur && <Alerte>{erreur}</Alerte>}
@@ -383,7 +383,7 @@ export default function Vote() {
         <div className="mx-auto mt-6 max-w-xs rounded-2xl border-2 border-dashed border-caramel-300 bg-caramel-100/30 p-4">
           <p className="text-xs font-bold uppercase tracking-widest text-caramel-600">Numéro de reçu</p>
           <p className="mt-1 select-all font-mono text-2xl font-extrabold tracking-wider text-brun-900">{recu}</p>
-          <p className="mt-2 text-xs text-brun-500">Il prouve que vous avez voté, sans révéler vos choix.</p>
+          <p className="mt-2 text-xs text-brun-500">Il prouve que votre vote a bien été enregistré.</p>
         </div>
         <a href={partage} target="_blank" rel="noreferrer" className="btn-primaire mt-6 inline-flex">
           Inviter mes amis à voter sur WhatsApp
