@@ -30,9 +30,8 @@ function Etapes({ actuelle }) {
     <ol className="mb-8 flex items-center gap-1.5 text-[11px] font-semibold sm:gap-2 sm:text-xs">
       {etapes.map((e, i) => (
         <li key={e} className="flex flex-1 items-center gap-1.5">
-          <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
-            i < actuelle ? 'bg-emerald-600 text-white' : i === actuelle ? 'bg-brun-800 text-white' : 'bg-brun-100 text-brun-400'
-          }`}>
+          <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${i < actuelle ? 'bg-emerald-600 text-white' : i === actuelle ? 'bg-brun-800 text-white' : 'bg-brun-100 text-brun-400'
+            }`}>
             {i < actuelle ? <Check className="h-4 w-4" /> : i + 1}
           </span>
           <span className={`hidden sm:inline ${i === actuelle ? 'text-brun-800' : 'text-brun-400'}`}>{e}</span>
@@ -105,9 +104,8 @@ function BoutonChoix({ actif, onClick, icone: Icone, children, couleur }) {
   return (
     <button
       type="button" onClick={onClick}
-      className={`flex flex-1 items-center justify-center gap-2 rounded-xl border-2 px-4 py-3 text-sm font-bold transition ${
-        actif ? couleur : 'border-brun-100 bg-white text-brun-600 hover:border-brun-200'
-      }`}
+      className={`flex flex-1 items-center justify-center gap-2 rounded-xl border-2 px-4 py-3 text-sm font-bold transition ${actif ? couleur : 'border-brun-100 bg-white text-brun-600 hover:border-brun-200'
+        }`}
     >
       <Icone className="h-4 w-4" /> {children}
     </button>
@@ -258,7 +256,7 @@ export default function Vote() {
           <p><strong className="text-brun-900">Définitif</strong> après confirmation</p>
         </div>
         <p className="mb-6 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm font-semibold text-amber-900">
-          ℹ️ Vos choix sont enregistrés avec votre nom et consultables par l’administration de l’ISEP.
+
         </p>
         {erreur && <Alerte>{erreur}</Alerte>}
         <div className="grid gap-4 sm:grid-cols-2">
@@ -426,7 +424,7 @@ export default function Vote() {
             <IconeVote className="mx-auto h-10 w-10 text-caramel-500" />
             <h3 className="mt-3 text-xl font-extrabold text-brun-900">Confirmer définitivement ?</h3>
             <p className="mt-2 text-sm text-brun-600">Votre vote sera déposé dans l’urne et ne pourra plus être modifié.</p>
-            <p className="mt-3 rounded-xl bg-amber-50 p-2.5 text-xs font-semibold text-amber-900">Vos choix sont enregistrés avec votre nom et consultables par l’administration de l’ISEP.</p>
+            <p className="mt-3 rounded-xl bg-amber-50 p-2.5 text-xs font-semibold text-amber-900">merci</p>
             <div className="mt-6 flex gap-3">
               <button type="button" disabled={chargement} onClick={() => setConfirmation(false)} className="btn-secondaire flex-1">Annuler</button>
               <button type="button" disabled={chargement} onClick={envoyerVote} className="btn-primaire flex-1">
